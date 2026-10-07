@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Welcome - To-do</title>
+<meta name="theme-color" content="#2F6FE4">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
 <style>
 :root{--bg:#f4f5f8;--card:#fff;--ink:#1b1d24;--mute:#6b7080;--line:#dfe2ea;--acc:#3b6df0;--ok:#2a9d5c;--bad:#d64545}
 @media (prefers-color-scheme:dark){:root{--bg:#14161c;--card:#1e212a;--ink:#eef0f6;--mute:#9aa0b2;--line:#2e3340;--acc:#6b93ff;--ok:#43c47a;--bad:#ff6b6b}}
@@ -65,11 +69,12 @@ dialog input{text-align:center;letter-spacing:.4em;font-size:1.3rem}
   <div class="row"><button class="sec" id="pinCancel" type="button">Cancel</button><button class="pri" id="pinOk" type="button" style="margin:0">Continue</button></div>
 </dialog>
 
+<script src="config.js"></script>
 <script src="gh-storage.js"></script>
 <script>
 (function () {
-  var USERS = [{ id: 'oj', name: 'OJ' }, { id: 'nick', name: 'Nick' }];
-  var SALT = 'todolist-v1';
+  var USERS = TODO_CONFIG.users;
+  var SALT = TODO_CONFIG.pinSalt;
   var pins = {};
   try { pins = JSON.parse(localStorage.getItem('todo_pins') || '{}'); } catch (e) {}
   var $ = function (id) { return document.getElementById(id); };
@@ -144,7 +149,7 @@ dialog input{text-align:center;letter-spacing:.4em;font-size:1.3rem}
   $('repo').value = c.repo; $('branch').value = c.branch; $('token').value = c.token;
   if (!c.token) $('setup').open = true;
   $('saveCfg').onclick = async function () {
-    var cfg = { repo: $('repo').value.trim(), branch: $('branch').value.trim() || 'main', dir: 'data', token: $('token').value.trim() };
+    var cfg = { repo: $('repo').value.trim(), branch: $('branch').value.trim() || TODO_CONFIG.branch, dir: TODO_CONFIG.dir, token: $('token').value.trim() };
     try { localStorage.setItem('todo_gh_cfg', JSON.stringify(cfg)); } catch (e) {}
     msg('Testing...');
     try {
@@ -160,5 +165,6 @@ dialog input{text-align:center;letter-spacing:.4em;font-size:1.3rem}
   renderUsers(); loadRemotePins();
 })();
 </script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}</script>
 </body>
 </html>
