@@ -2690,12 +2690,4 @@
     }
   }, 60000);
 
-  window.addEventListener('beforeunload', function (e) {
-    if (todos.length > 0 && !hasExportedThisSession) {
-      e.preventDefault();
-      e.returnValue = '';
-      return '';
-    }
-  });
-
   load();
