@@ -2,30 +2,511 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Loading...</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>To-do</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Special+Elite&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#2F6FE4">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="styles.css">
+<script src="config.js"></script>
+<script src="auth-gate.js"></script>
 </head>
-<body style="font-family:system-ui,sans-serif;padding:24px">Loading your list...
-<script>
-(async function () {
-  var u = (new URLSearchParams(location.search).get('u') || '').toLowerCase();
-  var ok = false;
-  try { ok = !!u && sessionStorage.getItem('todo_authed_' + u) === '1'; } catch (e) {}
-  if (!ok) { location.replace('index.html'); return; }
-  try {
-    var r = await fetch('todo-app.html', { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    var html = await r.text();
-    var tag = '<scr' + 'ipt>';
-    var i = html.indexOf(tag);
-    html = html.slice(0, i) + '<scr' + 'ipt src="gh-storage.js"></scr' + 'ipt>\n' + html.slice(i);
-    var name = u === 'oj' ? 'OJ' : u === 'nick' ? 'Nick' : u;
-    html = html.replace(/<title>[^<]*<\/title>/, '<title>To-do - ' + name + '</title>');
-    document.open(); document.write(html); document.close();
-  } catch (e) {
-    document.body.textContent = 'Could not load the app: ' + e.message;
-  }
-})();
-</script>
+<body>
+
+<div class="pad">
+  <div class="perf"></div>
+  <div class="sheet">
+    <header>
+      <button id="lockBtn" class="lock-btn" aria-label="Lock" type="button" style="display:none;">&#128274;</button>
+      <button id="settingsBtn" class="settings-btn" aria-label="Manage categories" type="button">&#9881;</button>
+      <h1 class="title-row">
+        <svg class="title-logo" viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="10" y="25" width="140" height="180" rx="18" fill="#0B4C82" stroke="#8EC1EE" stroke-width="6"/>
+          <rect x="55" y="4" width="50" height="30" rx="9" fill="#0B4C82" stroke="#8EC1EE" stroke-width="6"/>
+          <rect x="30" y="55" width="30" height="30" rx="7" fill="#0B4C82" stroke="#8EC1EE" stroke-width="4.5"/>
+          <path d="M36 70 L42 77 L54 62" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="30" y="100" width="30" height="30" rx="7" fill="#0B4C82" stroke="#8EC1EE" stroke-width="4.5"/>
+          <path d="M36 115 L42 122 L54 107" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="30" y="145" width="30" height="30" rx="7" fill="#0B4C82" stroke="#8EC1EE" stroke-width="4.5"/>
+        </svg>
+        <span>To-do</span>
+        <span class="app-label" id="appLabelHeader">Work</span>
+      </h1>
+      <p id="dateLabel">today</p>
+      <p class="version-label">v8.7 (Work)</p>
+    </header>
+
+    <p class="due-today-top" id="dueTodayTop">
+      <span class="filter-trigger" id="dueTodayTopTrigger">Due today: <span id="dueTodayTopCount">0</span></span>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <span class="filter-trigger" id="pendingTopTrigger">Pending: <span id="pendingTopCount">0</span></span>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <span class="filter-trigger" id="overdueTopTrigger">Overdue: <span id="overdueTopCount">0</span></span>
+    </p>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" id="tabActive" type="button" role="tab" aria-selected="true">To-do</button>
+      <button class="tab" id="tabPending" type="button" role="tab" aria-selected="false">Pending</button>
+      <button class="tab" id="tabDone" type="button" role="tab" aria-selected="false">Completed</button>
+    </div>
+
+    <div class="search-row">
+      <label for="searchInput" class="sort-label">Search</label>
+      <input type="search" id="searchInput" placeholder="Search tasks, categories, people, notes..." autocomplete="off">
+    </div>
+
+    <div class="sort-row">
+      <label for="sortSelect" class="sort-label">Sort by</label>
+      <select id="sortSelect">
+        <option value="priority" selected>Priority</option>
+        <option value="due">Due Date</option>
+        <option value="category">Category</option>
+        <option value="assignee">Assigned To</option>
+        <option value="name">Task Name</option>
+      </select>
+    </div>
+
+    <div class="filter-indicator" id="filterIndicator" style="display:none;">
+      <span id="filterIndicatorText"></span>
+      <button id="clearFilterBtn" type="button">Show All</button>
+    </div>
+
+    <button class="new-task-btn" id="newTaskBtn" type="button">+ New Task</button>
+
+    <div class="new-task-overlay" id="newTaskOverlay" role="dialog" aria-modal="true" aria-label="New task">
+      <div class="new-task-window">
+        <div class="new-task-titlebar">
+          <span>New Task</span>
+          <button id="newTaskWindowClose" class="new-task-window-close" type="button" aria-label="Close">&#10005;</button>
+        </div>
+        <div class="add-row" id="addRow">
+          <input type="text" id="newItem" placeholder="Write a new task..." maxlength="280" autocomplete="off">
+          <input type="date" id="dueDateInput" aria-label="Due date">
+          <select id="prioritySelect" aria-label="Priority">
+            <option value="high">High</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <select id="repeatSelect" aria-label="Repeat (needs a due date)">
+            <option value="">No repeat</option>
+            <option value="daily">Repeat daily</option>
+            <option value="weekdays">Repeat weekdays</option>
+            <option value="weekly">Repeat weekly</option>
+            <option value="monthly">Repeat monthly</option>
+          </select>
+          <select id="categorySelect" aria-label="Category"></select>
+          <div class="assignee-field">
+            <div class="assignee-field-label">Assigned to</div>
+            <div class="assignee-checklist" id="assigneeChecklist"></div>
+          </div>
+          <div class="assignee-field">
+            <div class="assignee-field-label">Assigned by / from</div>
+            <select id="assignedBySelect" aria-label="Assigned by / from"></select>
+          </div>
+          <div class="add-btn-row">
+            <button id="addBtn">Add</button>
+            <button id="cancelAddBtn" type="button">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="list-header" id="listHeader">
+      <span class="lh-spacer"></span>
+      <span class="lh-task">Task</span>
+      <span class="lh-category">Category</span>
+      <span class="lh-assignee">Assigned</span>
+      <span class="lh-due">Due</span>
+      <span class="lh-completed" id="lhCompleted">Date Completed</span>
+      <span class="lh-priority">Priority</span>
+    </div>
+
+    <ul class="list" id="list"></ul>
+    <div class="empty" id="emptyMsg" style="display:none;">Nothing on the list. Add your first task above.</div>
+
+    <footer>
+      <span id="countLabel">0 items left</span>
+      <span class="footer-actions">
+        <button id="exportBtn">Export</button>
+        <button id="clearBtn">Clear done</button>
+      </span>
+    </footer>
+
+    <div class="summary" id="summaryPanel">
+      <div class="summary-title">Summary</div>
+      <div class="summary-row">
+        <span class="summary-stat"><span class="priority-tag high">high</span> <span id="highCount">0</span></span>
+        <span class="summary-stat"><span class="priority-tag medium">medium</span> <span id="mediumCount">0</span></span>
+        <span class="summary-stat"><span class="priority-tag low">low</span> <span id="lowCount">0</span></span>
+      </div>
+      <div class="summary-row due-today-row">
+        <span class="summary-stat" id="dueTodayStat">Due today: <span id="dueTodayCount">0</span></span>
+        <span class="summary-stat" id="pendingStat">Pending: <span id="pendingSummaryCount">0</span></span>
+        <span class="summary-stat" id="overdueStat">Overdue: <span id="overdueCount">0</span></span>
+      </div>
+    </div>
+
+    <div class="footer-brand">
+      <div class="footer-status" id="footerStatus">
+        <div id="lastSyncLine">Last sync: never</div>
+        <div id="lastExportLine">Last export: never</div>
+      </div>
+      <div class="footer-mark">
+        <svg class="footer-brand-logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="24" cy="24" r="21" fill="#E3ECFB" stroke="#2F6FE4" stroke-width="2"/>
+          <path d="M15 25 L21 31 L33 18" fill="none" stroke="#2F6FE4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>To-do</span>
+        <span class="app-label" id="appLabelFooter">Work</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Settings</h2>
+      <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
+    </div>
+
+    <div class="accordion-section">
+      <button class="accordion-header" type="button" data-target="themeContent">
+        <span>Theme</span>
+        <span class="accordion-arrow">&#9656;</span>
+      </button>
+      <div class="accordion-content" id="themeContent">
+        <p class="settings-hint">Pick a color scheme for the app.</p>
+        <div class="theme-options" id="themeOptions">
+          <button class="theme-option" type="button" data-theme="light">
+            <span class="theme-swatch theme-swatch-light"></span>
+            <span>Light</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="dark">
+            <span class="theme-swatch theme-swatch-dark"></span>
+            <span>Dark</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="colourful">
+            <span class="theme-swatch theme-swatch-colourful"></span>
+            <span>Colourful</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="notebook">
+            <span class="theme-swatch theme-swatch-notebook"></span>
+            <span>Old Notebook</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="forest">
+            <span class="theme-swatch theme-swatch-forest"></span>
+            <span>Forest</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="ocean">
+            <span class="theme-swatch theme-swatch-ocean"></span>
+            <span>Ocean</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="sunset">
+            <span class="theme-swatch theme-swatch-sunset"></span>
+            <span>Sunset</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="slate">
+            <span class="theme-swatch theme-swatch-slate"></span>
+            <span>Slate</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="bw">
+            <span class="theme-swatch theme-swatch-bw"></span>
+            <span>Black &amp; White</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="wb">
+            <span class="theme-swatch theme-swatch-wb"></span>
+            <span>White &amp; Black</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="terminal">
+            <span class="theme-swatch theme-swatch-terminal"></span>
+            <span>Terminal</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="accordion-section">
+      <button class="accordion-header" type="button" data-target="categoriesContent">
+        <span>Categories</span>
+        <span class="accordion-arrow">&#9656;</span>
+      </button>
+      <div class="accordion-content" id="categoriesContent">
+        <ul class="category-list" id="categoryList"></ul>
+        <div class="add-category-row">
+          <input type="text" id="newCategoryInput" placeholder="New category name..." maxlength="30" autocomplete="off">
+          <button id="addCategoryBtn">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="accordion-section">
+      <button class="accordion-header" type="button" data-target="assigneesContent">
+        <span>Assigned To</span>
+        <span class="accordion-arrow">&#9656;</span>
+      </button>
+      <div class="accordion-content" id="assigneesContent">
+        <ul class="category-list" id="assigneeList"></ul>
+        <div class="add-category-row">
+          <input type="text" id="newAssigneeInput" placeholder="New person's name..." maxlength="30" autocomplete="off">
+          <button id="addAssigneeBtn">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="accordion-section">
+      <button class="accordion-header" type="button" data-target="assignedByContent">
+        <span>Assigned By / From</span>
+        <span class="accordion-arrow">&#9656;</span>
+      </button>
+      <div class="accordion-content" id="assignedByContent">
+        <ul class="category-list" id="assignedByList"></ul>
+        <div class="add-category-row">
+          <input type="text" id="newAssignedByInput" placeholder="New person's name..." maxlength="30" autocomplete="off">
+          <button id="addAssignedByBtn">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="accordion-section">
+      <button class="accordion-header" type="button" data-target="exportContent">
+        <span>Export</span>
+        <span class="accordion-arrow">&#9656;</span>
+      </button>
+      <div class="accordion-content" id="exportContent">
+        <p class="settings-hint">Download every task &mdash; active and completed &mdash; with its text, dates, priority, category, and subtasks.</p>
+        <button id="exportAllBtn" class="export-all-btn" type="button">Export All Tasks</button>
+        <button id="reportBtn" class="export-all-btn report-btn" type="button">View Summary Report</button>
+        <label class="auto-sync-toggle" id="reportIncludeCompletedLabel">
+          <input type="checkbox" id="reportIncludeCompleted">
+          Include completed tasks in the Summary Report
+        </label>
+      </div>
+    </div>
+
+    <div class="accordion-section">
+      <button class="accordion-header" type="button" data-target="remindersContent">
+        <span>Reminders</span>
+        <span class="accordion-arrow">&#9656;</span>
+      </button>
+      <div class="accordion-content" id="remindersContent">
+        <p class="settings-hint">Opens a pre-filled email in your mail app listing overdue, due-today, and high-priority tasks. You'll still need to hit send &mdash; this app can't send email automatically on its own, or while it's closed.</p>
+        <input type="email" id="reminderEmailInput" class="password-input" placeholder="your@email.com" autocomplete="off">
+        <div class="reminder-radio-group">
+          <label class="reminder-radio-option">
+            <input type="radio" name="emailReportOption" id="emailReportOptionNone" value="none" checked>
+            Task list only
+          </label>
+          <label class="reminder-radio-option">
+            <input type="radio" name="emailReportOption" id="emailReportOptionPdf" value="report">
+            Also open the Summary Report to attach
+          </label>
+        </div>
+        <p class="settings-hint settings-hint-small">Browsers can't attach files to an email draft automatically &mdash; this opens the report in a new tab with a "Print / Save as PDF" button, so you can save it and drag it into the email yourself.</p>
+        <button id="emailPriorityBtn" class="export-all-btn" type="button">Email Priority Tasks</button>
+      </div>
+    </div>
+
+    <div class="accordion-section">
+      <button class="accordion-header" type="button" data-target="importContent">
+        <span>Import</span>
+        <span class="accordion-arrow">&#9656;</span>
+      </button>
+      <div class="accordion-content" id="importContent">
+        <p class="settings-hint">Import tasks from a CSV file exported by this app (Export All Tasks or the Completed export). Imported tasks are added alongside your current list, not replacing it.</p>
+        <input type="file" id="importFileInput" accept=".csv" class="import-file-input">
+        <button id="importBtn" class="export-all-btn" type="button">Import Tasks</button>
+        <div id="importStatus" class="import-status"></div>
+      </div>
+    </div>
+
+    <div class="accordion-section">
+      <button class="accordion-header" type="button" data-target="syncContent">
+        <span>Sync</span>
+        <span class="accordion-arrow">&#9656;</span>
+      </button>
+      <div class="accordion-content" id="syncContent">
+        <p class="settings-hint" id="syncSupportedHint">Link a file inside a cloud-synced folder (Dropbox, Google Drive, OneDrive) to sync your tasks across computers. Click "Sync Now" on each computer &mdash; whichever side has the newest changes wins and gets copied over.</p>
+        <p class="settings-hint" id="syncUnsupportedHint" style="display:none;">One-click file sync needs Chrome or Edge &mdash; this browser doesn't support it. Use Export / Import above to move tasks between computers instead.</p>
+        <div id="syncStatus" class="import-status"></div>
+        <button id="chooseSyncFileBtn" class="export-all-btn" type="button">Choose Sync File</button>
+        <button id="syncNowBtn" class="export-all-btn report-btn" type="button">Sync Now</button>
+        <label class="auto-sync-toggle" id="autoSyncToggleLabel">
+          <input type="checkbox" id="autoSyncToggle">
+          Auto-sync in the background (after changes and every minute)
+        </label>
+        <div id="autoSyncStatus" class="import-status"></div>
+      </div>
+    </div>
+
+    <div class="accordion-section">
+      <button class="accordion-header" type="button" data-target="securityContent">
+        <span>Security</span>
+        <span class="accordion-arrow">&#9656;</span>
+      </button>
+      <div class="accordion-content" id="securityContent">
+        <p class="settings-hint" id="securityHint">Add a password to show a lock screen when you open this app. This is a basic deterrent, not real encryption &mdash; anyone who can view this file's source can bypass it.</p>
+        <div id="passwordStatus" class="password-status"></div>
+        <input type="password" id="newPasswordInput" class="password-input" placeholder="New password" autocomplete="new-password">
+        <button id="setPasswordBtn" class="export-all-btn" type="button">Set Password</button>
+        <button id="removePasswordBtn" class="export-all-btn remove-password-btn" type="button" style="display:none;">Remove Password</button>
+      </div>
+    </div>
+
+    <div class="accordion-section">
+      <button class="accordion-header" type="button" data-target="resetContent">
+        <span>Reset</span>
+        <span class="accordion-arrow">&#9656;</span>
+      </button>
+      <div class="accordion-content" id="resetContent">
+        <p class="settings-hint">Permanently delete every task in this list (active and completed). Categories and settings are kept. This cannot be undone &mdash; consider using Export first if you want a backup.</p>
+        <button id="clearAllTasksBtn" class="export-all-btn remove-password-btn" type="button">Clear All Tasks</button>
+      </div>
+    </div>
+
+    <div class="accordion-section">
+      <button class="accordion-header" type="button" data-target="changelogContent">
+        <span>Changelog</span>
+        <span class="accordion-arrow">&#9656;</span>
+      </button>
+      <div class="accordion-content" id="changelogContent">
+        <ul class="changelog-list">
+          <li><span class="changelog-version">v8.7</span> Reverted "Save task" back to v8.5 behavior (just saves, keeps the panel open). Added a separate "Close" button below it to roll up the panel when you're done.</li>
+          <li><span class="changelog-version">v8.6</span> "Save task" now closes/rolls up the task panel again after saving (Work only &mdash; reverting the v8.1 change that kept it open). Home is unaffected and still leaves the panel open.</li>
+          <li><span class="changelog-version">v8.5</span> Added a radio option to "Email Priority Tasks": "Also open the Summary Report to attach." Since browsers can't attach files to a mailto draft automatically, this opens the report in a separate tab (with its "Print / Save as PDF" button) and adds a note in the email reminding you to attach it manually.</li>
+          <li><span class="changelog-version">v8.4</span> Added "Assigned By / From" &mdash; a new managed list in Settings (below Assigned To), with its own dropdown when adding/editing a task, positioned below "Assigned To." Unlike Assigned To, this is single-select since a task is normally assigned by one person. Export/Import and the Summary Report updated to include it.</li>
+          <li><span class="changelog-version">v8.3</span> Added "Email Priority Tasks" in Settings &mdash; Reminders. Save your email once, then click to open a pre-filled draft listing overdue, due-today, and high-priority tasks. Note: this still requires the app to be open and you to hit Send &mdash; true automatic background email isn't possible without a server.</li>
+          <li><span class="changelog-version">v8.2</span> Fixed a bug where completing a task was blocked by "open subtasks" even when those items were actually Notes, not Subtasks. Since notes have no checkbox and can never be "done," they no longer count toward that check &mdash; only actual unchecked subtasks do.</li>
+          <li><span class="changelog-version">v8.1</span> "Save task" now just saves and keeps the task panel open, instead of closing it &mdash; click the task text again if you want to collapse it. Applies to both Work and Home.</li>
+          <li><span class="changelog-version">v8.0</span> (Work only) Every subtask/note entry now has a small "&rarr; Note" / "&rarr; Subtask" button, so existing entries (created before the Subtask/Note toggle existed) can be reclassified too, not just new ones. Switching to Note clears any "done" state, since notes can't be checked off.</li>
+          <li><span class="changelog-version">v7.9</span> (Work only) Added "Last sync" and "Last export" timestamps to the bottom-left of the footer, updating automatically after any sync (manual or auto) or CSV export, and remembered between sessions.</li>
+          <li><span class="changelog-version">v7.8</span> (Work only) Added a quick Subtask/Note toggle above the add box &mdash; Subtask entries keep the checkbox as before; Note entries skip it entirely, since a note isn't something you check off. Export/Import updated to preserve the distinction.</li>
+          <li><span class="changelog-version">v7.7</span> (Work only) Overdue/High Priority items in the Highlights section now show their due date too (UK format), or "No due date" if none is set.</li>
+          <li><span class="changelog-version">v7.6</span> (Work only) Highlights box now has a solid black border (was a faint light gray) to make it stand out more clearly.</li>
+          <li><span class="changelog-version">v7.5</span> (Work only) Highlights section: dates now show in UK format (DD-MM-YY), and each item is laid out as task name on top with due date/flags on a clearer line below, instead of a cramped side-by-side row.</li>
+          <li><span class="changelog-version">v7.4</span> (Work only) Fixed a flexbox bug in the new Highlights section where task text with any length would overflow off the right edge instead of wrapping. Verified by actually rendering the report and checking it visually.</li>
+          <li><span class="changelog-version">v7.3</span> (Work only) Added a "Highlights" section to the Summary Report, right below the stats bar &mdash; two side-by-side lists showing what's due in the next 7 days, and what's overdue or high priority.</li>
+          <li><span class="changelog-version">v7.2</span> (Work only) Summary Report's "Generated" timestamp now uses UK format (DD/MM/YYYY) instead of the browser's default locale format.</li>
+          <li><span class="changelog-version">v7.1</span> (Work only) Summary Report now excludes completed tasks by default &mdash; tick "Include completed tasks in the Summary Report" in Settings first if you want them included.</li>
+          <li><span class="changelog-version">v7.0</span> (Work only) Removed the logo (header and footer) specifically when using the Terminal theme; it still shows normally on all other themes.</li>
+          <li><span class="changelog-version">v6.9</span> (Work only) Made the divider lines between tasks in the Summary Report more prominent (light gray 1px &rarr; darker gray 2px).</li>
+          <li><span class="changelog-version">v6.8</span> (Work only) Renamed the Summary Report title from "To-do Summary Report" to just "Summary Report."</li>
+          <li><span class="changelog-version">v6.7</span> Fixed a bug where typing a new subtask/note and then clicking a different task (before hitting Add or Save task) would wipe the unsaved text. It's now preserved in memory and restored automatically, even if you switch to another task and back.</li>
+          <li><span class="changelog-version">v6.6</span> (Work only) Summary Report: the stats bar (Total tasks, Active, Pending, Completed, priority breakdown, subtasks done) now sits in a clean 4-column grid spread evenly across two rows, instead of wrapping raggedly.</li>
+          <li><span class="changelog-version">v6.5</span> (Work only) Increased the size of the subtask/note box &mdash; the "add new" field grew from 2 to 4 rows, and the inline edit field from 2 to 3 rows. Both remain resizable.</li>
+          <li><span class="changelog-version">v6.4</span> (Work only) Widened the Category (90px &rarr; 105px) and especially the Assigned To (75px &rarr; 150px) columns; the Task column shrinks accordingly to make room.</li>
+          <li><span class="changelog-version">v6.3</span> (Work only) Categories and Assigned To now stay in alphabetical order everywhere &mdash; Settings lists, dropdowns/checklists, and when new ones are added, renamed, or imported.</li>
+          <li><span class="changelog-version">v6.2</span> (Work only) Renamed the opening pop-up from "Today's Summary" to "This Week's Summary" and made it larger (420px &rarr; 640px, scrollable if needed). It already listed Overdue, Due Today, and Due This Week &mdash; all three remain.</li>
+          <li><span class="changelog-version">v6.1</span> (Work only) Pending tasks with a due date now automatically move back to the active To-do list once that date arrives &mdash; checked on opening the app, and every minute while it stays open.</li>
+          <li><span class="changelog-version">v6.0</span> (Work only) "Assigned To" now supports multiple people per task &mdash; a checkbox list replaces the single dropdown when adding or editing a task. Existing single-assignee tasks migrate automatically. Export/Import and the Summary Report updated to handle multiple names.</li>
+          <li><span class="changelog-version">v5.9</span> (Work only) Increased the size of the "+ New Task" popup window (380px &rarr; 560px wide, with more inner padding).</li>
+          <li><span class="changelog-version">v5.8</span> (Work only) Added a Pending count between Due Today and Overdue, at both the top and bottom of the sheet &mdash; click it to jump straight to the Pending tab.</li>
+          <li><span class="changelog-version">v5.7</span> (Work only) Pending tasks now have a "Move to Complete" button too, alongside "Move to Active" &mdash; no need to rely on the checkbox to finish a pending task.</li>
+          <li><span class="changelog-version">v5.6</span> (Work only) Added a "Pending" tab between To-do and Completed. Move a task there via "Move to Pending" in its expanded view &mdash; it comes off the main To-do list without being marked complete, and can be moved back to Active or checked off as done at any time.</li>
+          <li><span class="changelog-version">v5.5</span> Fixed the date field's calendar icon being invisible (black-on-black) in Dark, White &amp; Black, and Terminal themes.</li>
+          <li><span class="changelog-version">v5.4</span> Terminal theme: changed the outer page background from dark green to pure black.</li>
+          <li><span class="changelog-version">v5.3</span> Added a "Terminal" theme &mdash; black background with bright green text &mdash; 11 themes total in Settings.</li>
+          <li><span class="changelog-version">v5.2</span> Added a "White &amp; Black" theme (the inverse &mdash; black background, white text) &mdash; 10 themes total in Settings.</li>
+          <li><span class="changelog-version">v5.1</span> Added a "Black &amp; White" theme &mdash; 9 themes total in Settings.</li>
+          <li><span class="changelog-version">v5.0</span> Increased the subtask/note character limit from 140 to 5,000, and switched the input to a resizable, multi-line box (Shift+Enter for a new line, Enter to add).</li>
+          <li><span class="changelog-version">v4.9</span> Removed the separate "Add" button next to the subtask/note input &mdash; "Save task" now also adds any typed-but-not-yet-added subtask/note before closing the panel (Enter still adds one without closing).</li>
+          <li><span class="changelog-version">v4.8</span> Added a "Subtasks / Notes" title above the subtask list, and updated the empty message to "No Subtasks / Notes yet."</li>
+          <li><span class="changelog-version">v4.7</span> (Work only) Added "Assigned To" &mdash; a managed list (Settings) just like Categories, with its own column, dropdown when adding/editing tasks, and sort option.</li>
+          <li><span class="changelog-version">v4.6</span> Added four more themes: Forest, Ocean, Sunset, and Slate &mdash; 8 themes total in Settings.</li>
+          <li><span class="changelog-version">v4.5</span> Expanded Theme in Settings from a Light/Dark toggle to four options: Light, Dark, Colourful, and Old Notebook (aged paper tones with a typewriter-style title).</li>
+          <li><span class="changelog-version">v4.4</span> Added a browser confirmation prompt when closing the tab if you have tasks and haven't exported yet this session &mdash; gives you the chance to cancel and export first.</li>
+          <li><span class="changelog-version">v4.3</span> Fixed a bug where Work and Home copies shared the same saved data, since browsers store local files under one shared storage space. Each copy now uses its own namespaced storage, so they're fully independent.</li>
+          <li><span class="changelog-version">v4.2</span> Added a "Clear All Tasks" option in Settings (Reset) to wipe every task in a list and start fresh, with a confirmation showing how many will be deleted.</li>
+          <li><span class="changelog-version">v4.1</span> Added a small badge next to "To-do" (header and footer) and updated the browser tab title, so Work and Home copies of the app are easy to tell apart at a glance.</li>
+          <li><span class="changelog-version">v4.0</span> Fixed dropdown menus in Dark theme showing invisible white-on-white text &mdash; option lists now use the theme's colors explicitly.</li>
+          <li><span class="changelog-version">v3.9</span> Fixed a bug where "Overdue" in the top banner would flash red just because "Due today" had items, even with zero overdue tasks. They now flash independently.</li>
+          <li><span class="changelog-version">v3.8</span> Added a Light/Dark theme toggle in Settings &mdash; your choice is saved and remembered next time you open the app.</li>
+          <li><span class="changelog-version">v3.7</span> Moved the original checkmark-circle logo to the bottom "To-do" footer mark; the header keeps the new clipboard-checklist logo.</li>
+          <li><span class="changelog-version">v3.6</span> Replaced the checkmark-circle logo with a new clipboard-and-checklist logo, in the header and footer.</li>
+          <li><span class="changelog-version">v3.5</span> Increased the size of the header logo and "To-do" title.</li>
+          <li><span class="changelog-version">v3.4</span> Default sort on opening the app changed back to Priority.</li>
+          <li><span class="changelog-version">v3.3</span> "Due Today" and "Overdue" (top and bottom) are now clickable &mdash; click one to filter the list to just those tasks, with a "Show All" chip to clear it.</li>
+          <li><span class="changelog-version">v3.2</span> Overdue tasks now also get a row highlight, matching the same light blue used for "due today."</li>
+          <li><span class="changelog-version">v3.1</span> A task can no longer be marked complete while it still has open subtasks &mdash; you'll get a warning listing how many are left.</li>
+          <li><span class="changelog-version">v3.0</span> Added an Overdue counter alongside Due Today, at both the top and bottom of the sheet, in the same style and with the same flash-red behavior.</li>
+          <li><span class="changelog-version">v2.9</span> Added more blue throughout the app &mdash; header and column-header underlines, section dividers, and input focus states now use a blue accent instead of black/green.</li>
+          <li><span class="changelog-version">v2.8</span> Default sort on opening the app changed from Priority to Category.</li>
+          <li><span class="changelog-version">v2.7</span> Added a small logo + "To-do" mark to the bottom right of the app.</li>
+          <li><span class="changelog-version">v2.6</span> Added a checkmark logo beside the "To-do" title in the header.</li>
+          <li><span class="changelog-version">v2.5</span> Switched the typewriter font (Special Elite / Courier Prime) to Nunito, a softer, easier-to-read sans-serif, throughout the app.</li>
+          <li><span class="changelog-version">v2.4</span> Added a summary pop-up on opening the app, showing overdue tasks, tasks due today, and tasks due this week (only appears if there's something to show).</li>
+          <li><span class="changelog-version">v2.3</span> Added an "Auto-sync" toggle &mdash; automatically syncs in the background after changes and every minute while the app is open, once a sync file is linked.</li>
+          <li><span class="changelog-version">v2.2</span> Added one-click Sync (Settings) &mdash; link a file in a cloud-synced folder and sync tasks across computers with a single click. Chrome/Edge only.</li>
+          <li><span class="changelog-version">v2.1</span> "+ New Task" now opens in a floating popup window instead of expanding inline.</li>
+          <li><span class="changelog-version">v2.0</span> Added bold group dividers when sorting by Priority, Category, or Due Date, so each group is clearly separated.</li>
+          <li><span class="changelog-version">v1.9</span> Added this changelog viewer to Settings.</li>
+          <li><span class="changelog-version">v1.8</span> Settings reorganized into a collapsible accordion (Categories, Export, Import, Security).</li>
+          <li><span class="changelog-version">v1.7</span> Moved the top "Due today" counter below the header divider and enlarged it.</li>
+          <li><span class="changelog-version">v1.6</span> Added a second "Due today" counter at the top of the sheet.</li>
+          <li><span class="changelog-version">v1.5</span> Added a printable Summary Report (Settings &rarr; Export).</li>
+          <li><span class="changelog-version">v1.4</span> "Delete task" now requires a confirming second click.</li>
+          <li><span class="changelog-version">v1.3</span> Removed the "Created" date label from the task panel footer.</li>
+          <li><span class="changelog-version">v1.2</span> Deleting a subtask now requires a confirming second click.</li>
+          <li><span class="changelog-version">v1.1</span> Each subtask now shows its own added date (dd/mm).</li>
+          <li><span class="changelog-version">v1.0</span> Version number first added to the sheet.</li>
+        </ul>
+      </div>
+    </div>
+
+    <button id="closeSettingsBottomBtn" class="close-settings-bottom-btn" type="button">Close</button>
+  </div>
+</div>
+
+<div class="modal-overlay lock-overlay" id="lockOverlay">
+  <div class="modal lock-box">
+    <div class="modal-header">
+      <h2>Locked</h2>
+    </div>
+    <p class="settings-hint">Enter your password to view your to-do list.</p>
+    <input type="password" id="unlockInput" class="password-input" placeholder="Password" autocomplete="current-password">
+    <button id="unlockBtn" class="export-all-btn" type="button">Unlock</button>
+    <div id="unlockError" class="unlock-error"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="dueSummaryOverlay" role="dialog" aria-modal="true" aria-label="This week's summary">
+  <div class="modal due-summary-modal">
+    <div class="modal-header">
+      <h2>This Week's Summary</h2>
+      <button id="closeDueSummaryBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
+    </div>
+    <div id="dueSummaryBody"></div>
+    <button id="dueSummaryOkBtn" class="export-all-btn" type="button">Got it</button>
+  </div>
+</div>
+
+<div id="toastBox" class="toast" role="status" aria-live="polite"></div>
+
+<div class="modal-overlay" id="confirmOverlay" role="alertdialog" aria-modal="true" aria-labelledby="confirmText">
+  <div class="modal confirm-box">
+    <p id="confirmText"></p>
+    <div class="confirm-row">
+      <button type="button" id="confirmCancel" class="confirm-cancel">Cancel</button>
+      <button type="button" id="confirmOk" class="confirm-ok">OK</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reportOverlay" role="dialog" aria-modal="true" aria-label="Summary report">
+  <div class="report-modal">
+    <div class="report-bar">
+      <button type="button" id="reportPrint" class="confirm-ok">Print / Save as PDF</button>
+      <button type="button" id="reportClose" class="confirm-cancel">Close</button>
+    </div>
+    <iframe id="reportFrame" title="Summary report"></iframe>
+  </div>
+</div>
+
+<script src="gh-storage.js"></script>
+<script src="app.js"></script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}</script>
 </body>
 </html>
