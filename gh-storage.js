@@ -109,6 +109,46 @@
   }
   GH.mergeData = mergeData;
 
+  // read-modify-write another file in the data folder, retrying if someone else saved in between
+  GH.updateFile = async function (path, mutate) {
+    if (!cfg().token) throw new Error('Connect to GitHub first (login page > Connect to GitHub).');
+    var lastErr;
+    for (var i = 0; i < 3; i++) {
+      var f = await GH.getFile(path);
+      var next = mutate(f ? f.data : null);
+      try { await GH.putFile(path, next, f ? f.sha : null); return next; }
+      catch (e) { lastErr = e; if (e.status !== 409 && e.status !== 422) throw e; }
+    }
+    throw lastErr;
+  };
+
+  // add a copy of a task to another user's list (they pick it up on their next sync)
+  GH.sendTask = function (toUser, task, key) {
+    return GH.updateFile(toUser + '.json', function (d) {
+      d = d || {};
+      var arr = parseArr(d[key] || '[]') || [];
+      if (!arr.some(function (t) { return t.id === task.id; })) arr.push(task);
+      d[key] = JSON.stringify(arr);
+      return d;
+    });
+  };
+
+  // old completed tasks live in <user>-archive.json so the main file stays small
+  GH.archiveTasks = function (user, tasks) {
+    return GH.updateFile(user + '-archive.json', function (d) {
+      var all = (d && Array.isArray(d.tasks)) ? d.tasks : [];
+      tasks.forEach(function (t) { if (!all.some(function (x) { return x.id === t.id; })) all.push(t); });
+      return { tasks: all };
+    });
+  };
+  GH.readArchive = async function (user) {
+    var f = await GH.getFile(user + '-archive.json');
+    return (f && Array.isArray(f.data.tasks)) ? f.data.tasks : [];
+  };
+  GH.clearArchive = function (user) {
+    return GH.updateFile(user + '-archive.json', function () { return { tasks: [] }; });
+  };
+
   var U = (new URLSearchParams(location.search).get('u') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '');
   if (!U) return;
 

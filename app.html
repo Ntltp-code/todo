@@ -151,7 +151,6 @@
 
     <div class="footer-brand">
       <div class="footer-status" id="footerStatus">
-        <div id="lastSyncLine">Last sync: never</div>
         <div id="lastExportLine">Last export: never</div>
       </div>
       <div class="footer-mark">
@@ -324,21 +323,15 @@
     </div>
 
     <div class="accordion-section">
-      <button class="accordion-header" type="button" data-target="syncContent">
-        <span>Sync</span>
+      <button class="accordion-header" type="button" data-target="archiveContent">
+        <span>Archive</span>
         <span class="accordion-arrow">&#9656;</span>
       </button>
-      <div class="accordion-content" id="syncContent">
-        <p class="settings-hint" id="syncSupportedHint">Link a file inside a cloud-synced folder (Dropbox, Google Drive, OneDrive) to sync your tasks across computers. Click "Sync Now" on each computer &mdash; whichever side has the newest changes wins and gets copied over.</p>
-        <p class="settings-hint" id="syncUnsupportedHint" style="display:none;">One-click file sync needs Chrome or Edge &mdash; this browser doesn't support it. Use Export / Import above to move tasks between computers instead.</p>
-        <div id="syncStatus" class="import-status"></div>
-        <button id="chooseSyncFileBtn" class="export-all-btn" type="button">Choose Sync File</button>
-        <button id="syncNowBtn" class="export-all-btn report-btn" type="button">Sync Now</button>
-        <label class="auto-sync-toggle" id="autoSyncToggleLabel">
-          <input type="checkbox" id="autoSyncToggle">
-          Auto-sync in the background (after changes and every minute)
-        </label>
-        <div id="autoSyncStatus" class="import-status"></div>
+      <div class="accordion-content" id="archiveContent">
+        <p class="settings-hint">Completed tasks older than 90 days are moved to a separate archive file once a day, so your list stays fast and small. Nothing is deleted &mdash; you can restore them here.</p>
+        <div id="archiveStatus" class="import-status"></div>
+        <button id="archiveNowBtn" class="export-all-btn" type="button">Archive old tasks now</button>
+        <button id="restoreArchiveBtn" class="export-all-btn report-btn" type="button">Restore all archived tasks</button>
       </div>
     </div>
 

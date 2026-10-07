@@ -8,3 +8,7 @@ Static site (GitHub Pages). Task data syncs to a **private** repo, `ntltp-code/n
 - `tests/merge.test.js` - `node tests/merge.test.js`
 
 Setup on each device: open the login page, expand "Connect to GitHub", enter `ntltp-code/ntltp-private`, branch `main` and a fine-grained token limited to that repo (Contents: read and write).
+
+## Sharing and archiving
+- Open a task and use "Send copy to <name>" to add a copy to the other user's list (needs the GitHub token).
+- Completed tasks older than 90 days move daily to `data/<user>-archive.json`; Settings > Archive can run it now or restore everything.
