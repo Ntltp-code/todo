@@ -1,5 +1,5 @@
 /* sw.js - caches the app shell so it opens offline. Cross-origin calls (GitHub API) are never cached. */
-var CACHE = 'todo-shell-v1';
+var CACHE = 'todo-shell-v2';
 var SHELL = ['index.html', 'app.html', 'styles.css', 'app.js', 'config.js', 'auth-gate.js', 'gh-storage.js', 'icon.svg', 'manifest.webmanifest'];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));

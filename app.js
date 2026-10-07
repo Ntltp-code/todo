@@ -39,14 +39,6 @@
   const exportAllBtn = document.getElementById('exportAllBtn');
   const reminderEmailInput = document.getElementById('reminderEmailInput');
   const emailPriorityBtn = document.getElementById('emailPriorityBtn');
-  const chooseSyncFileBtn = document.getElementById('chooseSyncFileBtn');
-  const syncNowBtn = document.getElementById('syncNowBtn');
-  const syncStatusEl = document.getElementById('syncStatus');
-  const syncSupportedHint = document.getElementById('syncSupportedHint');
-  const syncUnsupportedHint = document.getElementById('syncUnsupportedHint');
-  const autoSyncToggle = document.getElementById('autoSyncToggle');
-  const autoSyncToggleLabel = document.getElementById('autoSyncToggleLabel');
-  const autoSyncStatusEl = document.getElementById('autoSyncStatus');
   const reportBtn = document.getElementById('reportBtn');
   const lockBtn = document.getElementById('lockBtn');
   const lockOverlay = document.getElementById('lockOverlay');
@@ -83,16 +75,9 @@
   const THEME_KEY = STORAGE_PREFIX + 'theme';
   const LOCAL_UPDATED_KEY = STORAGE_PREFIX + 'localDataUpdatedAt';
   let localDataUpdatedAt = 0;
-  let syncFileHandle = null;
-  const AUTO_SYNC_KEY = STORAGE_PREFIX + 'autoSyncEnabled';
-  const LAST_SYNC_KEY = STORAGE_PREFIX + 'lastSyncAt';
   const LAST_EXPORT_KEY = STORAGE_PREFIX + 'lastExportAt';
   const REMINDER_EMAIL_KEY = STORAGE_PREFIX + 'reminderEmail';
-  let lastSyncAt = 0;
   let lastExportAt = 0;
-  let autoSyncEnabled = false;
-  let autoSyncTimer = null;
-  const syncSupported = 'showSaveFilePicker' in window;
   const PASSWORD_HASH_KEY = STORAGE_PREFIX + 'appPasswordHash';
   let passwordHash = '';
 
@@ -133,7 +118,6 @@
   function updateFooterStatus() {
     const syncLine = document.getElementById('lastSyncLine');
     const exportLine = document.getElementById('lastExportLine');
-    if (syncLine) syncLine.textContent = 'Last sync: ' + formatFooterTimestamp(lastSyncAt);
     if (exportLine) exportLine.textContent = 'Last export: ' + formatFooterTimestamp(lastExportAt);
   }
 
@@ -350,11 +334,112 @@
     showToast('Repeating task: next one due ' + formatDate(next) + '.');
   }
 
+  // ---------- sharing tasks with the other user ----------
+  const ME = (new URLSearchParams(location.search).get('u') || '').toLowerCase();
+  const USER_LIST = (window.TODO_CONFIG && TODO_CONFIG.users) || [];
+  function userName(id) { const u = USER_LIST.find(x => x.id === id); return u ? u.name : id; }
+  function otherUsers() { return USER_LIST.filter(u => u.id !== ME); }
+
+  async function sendTaskTo(item, user) {
+    const ok = await askConfirm('Send a copy of "' + item.text + '" to ' + user.name + '\'s list?', 'Send');
+    if (!ok) return;
+    const copy = JSON.parse(JSON.stringify(item));
+    copy.id = uid();
+    copy.done = false;
+    copy.pending = false;
+    copy.completedAt = null;
+    copy.createdAt = Date.now();
+    copy.updatedAt = Date.now();
+    copy.sentFrom = userName(ME);
+    copy.assignedBy = userName(ME);
+    copy.subtasks = (item.subtasks || []).map(x => Object.assign({}, x, { id: uid() }));
+    try {
+      await TodoGH.sendTask(user.id, copy, STORAGE_KEY);
+      showToast('Sent to ' + user.name + '.');
+    } catch (e) {
+      showToast('Could not send: ' + e.message);
+    }
+  }
+
+  // ---------- archiving old completed tasks ----------
+  const ARCHIVE_DAYS = 90;
+  const archiveStatusEl = document.getElementById('archiveStatus');
+  function archiveSay(msg) { if (archiveStatusEl) archiveStatusEl.textContent = msg; }
+
+  async function archiveOldCompleted(manual) {
+    if (!TodoGH.cfg().token) {
+      if (manual) showToast('Connect to GitHub first to use the archive.');
+      return;
+    }
+    const cutoff = Date.now() - ARCHIVE_DAYS * 86400000;
+    const old = todos.filter(t => t.done && t.completedAt && t.completedAt < cutoff);
+    if (!old.length) {
+      if (manual) showToast('Nothing completed more than ' + ARCHIVE_DAYS + ' days ago.');
+      return;
+    }
+    try {
+      await TodoGH.archiveTasks(ME, old);
+      const ids = new Set(old.map(t => t.id));
+      todos = todos.filter(t => !ids.has(t.id));
+      render();
+      save();
+      showToast('Archived ' + old.length + ' completed task' + (old.length === 1 ? '' : 's') + ' older than ' + ARCHIVE_DAYS + ' days.');
+      refreshArchiveCount();
+    } catch (e) {
+      if (manual) showToast('Could not archive: ' + e.message);
+    }
+  }
+
+  async function refreshArchiveCount() {
+    if (!TodoGH.cfg().token) { archiveSay('Connect to GitHub to use the archive.'); return; }
+    try {
+      const a = await TodoGH.readArchive(ME);
+      archiveSay(a.length + ' task' + (a.length === 1 ? '' : 's') + ' in the archive.');
+    } catch (e) { archiveSay(''); }
+  }
+
+  async function restoreArchive() {
+    try {
+      const a = await TodoGH.readArchive(ME);
+      if (!a.length) { showToast('The archive is empty.'); return; }
+      const have = new Set(todos.map(t => t.id));
+      a.forEach(t => { if (!have.has(t.id)) todos.push(t); });
+      await TodoGH.clearArchive(ME);
+      render();
+      save();
+      showToast('Restored ' + a.length + ' task' + (a.length === 1 ? '' : 's') + ' from the archive.');
+      refreshArchiveCount();
+    } catch (e) {
+      showToast('Could not restore: ' + e.message);
+    }
+  }
+
+  document.getElementById('archiveNowBtn').addEventListener('click', () => archiveOldCompleted(true));
+  document.getElementById('restoreArchiveBtn').addEventListener('click', restoreArchive);
+  document.getElementById('settingsBtn').addEventListener('click', refreshArchiveCount);
+
+  // once a day, quietly archive on load
+  setTimeout(() => {
+    try {
+      const k = 'todo_last_archive_' + ME;
+      if (Date.now() - (parseInt(localStorage.getItem(k), 10) || 0) < 86400000) return;
+      localStorage.setItem(k, String(Date.now()));
+    } catch (e) { /* storage unavailable: archive anyway */ }
+    archiveOldCompleted(false);
+  }, 8000);
+
   // pick up changes another device saved to GitHub
   window.addEventListener('todo-remote-update', async () => {
     try {
+      const beforeIds = new Set(todos.map(t => t.id));
       const r = await storageGet(STORAGE_KEY);
       todos = r ? JSON.parse(r.value) : [];
+      const received = todos.filter(t => t.sentFrom && !beforeIds.has(t.id) && !t.seenSent);
+      if (received.length) {
+        received.forEach(t => { t.seenSent = true; });
+        showToast(received[0].sentFrom + ' sent you ' + (received.length === 1 ? '"' + received[0].text + '"' : received.length + ' tasks') + '.');
+        save();
+      }
       const c = await storageGet(CATEGORIES_KEY);
       if (c) { const a = JSON.parse(c.value); if (Array.isArray(a)) categories = a; }
       const a2 = await storageGet(ASSIGNEES_KEY);
@@ -427,12 +512,6 @@
       // no timestamp recorded yet
     }
     try {
-      const lastSyncResult = await storageGet(LAST_SYNC_KEY);
-      if (lastSyncResult && lastSyncResult.value) lastSyncAt = parseInt(lastSyncResult.value, 10) || 0;
-    } catch (e) {
-      // no sync recorded yet
-    }
-    try {
       const lastExportResult = await storageGet(LAST_EXPORT_KEY);
       if (lastExportResult && lastExportResult.value) lastExportAt = parseInt(lastExportResult.value, 10) || 0;
     } catch (e) {
@@ -445,7 +524,6 @@
       // no saved email yet
     }
     updateFooterStatus();
-    initSyncUI();
     populateCategorySelect();
     renderCategoryList();
     populateAssigneeChecklist();
@@ -506,7 +584,6 @@
         savePending = false;
         save();
       }
-      if (typeof debouncedAutoSync === 'function') debouncedAutoSync();
     }
   }
 
@@ -1138,8 +1215,18 @@
             }
           }
 
+          const sendBtns = otherUsers().map(u => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'pending-toggle';
+            b.textContent = 'Send copy to ' + u.name;
+            b.addEventListener('click', () => sendTaskTo(item, u));
+            return b;
+          });
+
           panelFooter.appendChild(remove);
           if (cancelTaskDeleteBtn) panelFooter.appendChild(cancelTaskDeleteBtn);
+          sendBtns.forEach(b => panelFooter.appendChild(b));
           if (pendingToggleBtn) panelFooter.appendChild(pendingToggleBtn);
           if (markCompleteBtn) panelFooter.appendChild(markCompleteBtn);
           panelFooter.appendChild(saveTaskBtn);
@@ -1899,261 +1986,6 @@
     reader.readAsText(file);
   });
 
-  // --- Sync (File System Access API) ---
-
-  function showSyncStatus(message, type) {
-    syncStatusEl.textContent = message;
-    syncStatusEl.className = 'import-status' + (type ? ' ' + type : '');
-  }
-
-  function openHandleDB() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(STORAGE_PREFIX + 'todoSyncDB', 1);
-      req.onupgradeneeded = () => {
-        req.result.createObjectStore('handles');
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  async function storeHandleInIDB(handle) {
-    try {
-      const db = await openHandleDB();
-      await new Promise((resolve, reject) => {
-        const tx = db.transaction('handles', 'readwrite');
-        tx.objectStore('handles').put(handle, STORAGE_PREFIX + 'syncFile');
-        tx.oncomplete = resolve;
-        tx.onerror = () => reject(tx.error);
-      });
-    } catch (e) {
-      // handle persistence is best-effort
-    }
-  }
-
-  async function loadHandleFromIDB() {
-    try {
-      const db = await openHandleDB();
-      return await new Promise(resolve => {
-        const tx = db.transaction('handles', 'readonly');
-        const req = tx.objectStore('handles').get(STORAGE_PREFIX + 'syncFile');
-        req.onsuccess = () => resolve(req.result || null);
-        req.onerror = () => resolve(null);
-      });
-    } catch (e) {
-      return null;
-    }
-  }
-
-  async function initSyncUI() {
-    if (!syncSupported) {
-      syncSupportedHint.style.display = 'none';
-      syncUnsupportedHint.style.display = 'block';
-      chooseSyncFileBtn.style.display = 'none';
-      syncNowBtn.style.display = 'none';
-      autoSyncToggleLabel.style.display = 'none';
-      return;
-    }
-    const handle = await loadHandleFromIDB();
-    if (handle) {
-      syncFileHandle = handle;
-      showSyncStatus('Linked to "' + handle.name + '". Click Sync Now to sync.', '');
-    } else {
-      showSyncStatus('No sync file linked yet.', '');
-    }
-
-    try {
-      const autoResult = await storageGet(AUTO_SYNC_KEY);
-      autoSyncEnabled = !!(autoResult && autoResult.value === 'true');
-    } catch (e) {
-      autoSyncEnabled = false;
-    }
-    autoSyncToggle.checked = autoSyncEnabled;
-    if (autoSyncEnabled && syncFileHandle) {
-      startAutoSyncPolling();
-    }
-  }
-
-  function startAutoSyncPolling() {
-    stopAutoSyncPolling();
-    autoSyncTimer = setInterval(silentAutoSync, 60000);
-  }
-
-  function stopAutoSyncPolling() {
-    if (autoSyncTimer) {
-      clearInterval(autoSyncTimer);
-      autoSyncTimer = null;
-    }
-  }
-
-  async function silentAutoSync() {
-    if (!syncSupported || !syncFileHandle || !autoSyncEnabled) return;
-    let granted = 'prompt';
-    try {
-      granted = await syncFileHandle.queryPermission({ mode: 'readwrite' });
-    } catch (e) {
-      return;
-    }
-    if (granted !== 'granted') {
-      autoSyncStatusEl.textContent = 'Auto-sync paused \u2014 click Sync Now once to reconnect.';
-      autoSyncStatusEl.className = 'import-status error';
-      return;
-    }
-
-    let fileData = null;
-    try {
-      fileData = await readSyncFile(syncFileHandle);
-    } catch (e) {
-      return;
-    }
-
-    const fileUpdatedAt = (fileData && fileData.savedAt) || 0;
-    const now = new Date().toLocaleTimeString();
-
-    if (fileData && fileUpdatedAt > localDataUpdatedAt) {
-      todos = Array.isArray(fileData.todos) ? fileData.todos : [];
-      if (Array.isArray(fileData.categories)) categories = fileData.categories;
-      localDataUpdatedAt = fileUpdatedAt;
-      await queuedStorageSet(STORAGE_KEY, JSON.stringify(todos));
-      await queuedStorageSet(CATEGORIES_KEY, JSON.stringify(categories));
-      await queuedStorageSet(LOCAL_UPDATED_KEY, String(localDataUpdatedAt));
-      populateCategorySelect();
-      renderCategoryList();
-      render();
-      lastSyncAt = Date.now();
-      queuedStorageSet(LAST_SYNC_KEY, String(lastSyncAt));
-      updateFooterStatus();
-      autoSyncStatusEl.textContent = 'Auto-synced ' + now + ' \u2014 pulled changes.';
-      autoSyncStatusEl.className = 'import-status success';
-    } else if (!fileData || localDataUpdatedAt > fileUpdatedAt) {
-      try {
-        await writeSyncFile(syncFileHandle, { todos, categories, savedAt: localDataUpdatedAt });
-        lastSyncAt = Date.now();
-        queuedStorageSet(LAST_SYNC_KEY, String(lastSyncAt));
-        updateFooterStatus();
-        autoSyncStatusEl.textContent = 'Auto-synced ' + now + ' \u2014 pushed changes.';
-        autoSyncStatusEl.className = 'import-status success';
-      } catch (e) {
-        // fail silently in the background; manual Sync Now will surface the error
-      }
-    }
-  }
-
-  const debouncedAutoSync = debounce(() => {
-    if (autoSyncEnabled) silentAutoSync();
-  }, 3000);
-
-  autoSyncToggle.addEventListener('change', async () => {
-    autoSyncEnabled = autoSyncToggle.checked;
-    await queuedStorageSet(AUTO_SYNC_KEY, String(autoSyncEnabled));
-    if (autoSyncEnabled) {
-      if (!syncFileHandle) {
-        await chooseSyncFile();
-      }
-      if (syncFileHandle) {
-        startAutoSyncPolling();
-        silentAutoSync();
-      }
-    } else {
-      stopAutoSyncPolling();
-      autoSyncStatusEl.textContent = '';
-    }
-  });
-
-  async function ensurePermission(handle) {
-    const opts = { mode: 'readwrite' };
-    if ((await handle.queryPermission(opts)) === 'granted') return true;
-    if ((await handle.requestPermission(opts)) === 'granted') return true;
-    return false;
-  }
-
-  async function chooseSyncFile() {
-    try {
-      const handle = await window.showSaveFilePicker({
-        suggestedName: 'todo-sync.json',
-        types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
-      });
-      syncFileHandle = handle;
-      await storeHandleInIDB(handle);
-      showSyncStatus('Linked to "' + handle.name + '". Click Sync Now to sync.', 'success');
-    } catch (e) {
-      // user cancelled the picker
-    }
-  }
-
-  async function readSyncFile(handle) {
-    const file = await handle.getFile();
-    const text = await file.text();
-    if (!text.trim()) return null;
-    try {
-      return JSON.parse(text);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  async function writeSyncFile(handle, data) {
-    const writable = await handle.createWritable();
-    await writable.write(JSON.stringify(data, null, 2));
-    await writable.close();
-  }
-
-  async function performSync() {
-    if (!syncSupported) return;
-
-    if (!syncFileHandle) {
-      await chooseSyncFile();
-      if (!syncFileHandle) return;
-    }
-
-    const permitted = await ensurePermission(syncFileHandle);
-    if (!permitted) {
-      showSyncStatus('Permission for the sync file was denied.', 'error');
-      return;
-    }
-
-    let fileData = null;
-    try {
-      fileData = await readSyncFile(syncFileHandle);
-    } catch (e) {
-      showSyncStatus('Could not read the sync file.', 'error');
-      return;
-    }
-
-    const fileUpdatedAt = (fileData && fileData.savedAt) || 0;
-
-    if (fileData && fileUpdatedAt > localDataUpdatedAt) {
-      todos = Array.isArray(fileData.todos) ? fileData.todos : [];
-      if (Array.isArray(fileData.categories)) categories = fileData.categories;
-      localDataUpdatedAt = fileUpdatedAt;
-      await queuedStorageSet(STORAGE_KEY, JSON.stringify(todos));
-      await queuedStorageSet(CATEGORIES_KEY, JSON.stringify(categories));
-      await queuedStorageSet(LOCAL_UPDATED_KEY, String(localDataUpdatedAt));
-      populateCategorySelect();
-      renderCategoryList();
-      render();
-      lastSyncAt = Date.now();
-      queuedStorageSet(LAST_SYNC_KEY, String(lastSyncAt));
-      updateFooterStatus();
-      showSyncStatus('Synced \u2014 pulled the latest changes from the shared file.', 'success');
-    } else {
-      const now = Date.now();
-      try {
-        await writeSyncFile(syncFileHandle, { todos, categories, savedAt: now });
-        localDataUpdatedAt = now;
-        await queuedStorageSet(LOCAL_UPDATED_KEY, String(now));
-        lastSyncAt = Date.now();
-        queuedStorageSet(LAST_SYNC_KEY, String(lastSyncAt));
-        updateFooterStatus();
-        showSyncStatus('Synced \u2014 pushed your latest changes to the shared file.', 'success');
-      } catch (e) {
-        showSyncStatus('Could not write to the sync file.', 'error');
-      }
-    }
-  }
-
-  chooseSyncFileBtn.addEventListener('click', chooseSyncFile);
-  syncNowBtn.addEventListener('click', performSync);
 
   addBtn.addEventListener('click', addItem);
   input.addEventListener('keydown', e => {

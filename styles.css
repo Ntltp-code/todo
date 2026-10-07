@@ -2168,3 +2168,31 @@
 .report-modal iframe { flex:1; border:0; background:#fff; }
 :focus-visible { outline:2px solid var(--accent-blue); outline-offset:2px; }
 @media (prefers-reduced-motion: reduce) { .toast { transition:none; } }
+
+/* ---- phones ---- */
+@media (max-width: 640px) {
+  body { padding: 0; }
+  .pad { max-width: 100%; box-shadow: none; }
+  .sheet { padding: 16px 12px 20px; }
+  .list-header { display: none !important; }
+  li.item .row, li.item .row.grid-done {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 4px;
+  }
+  li.item .row .box { flex: 0 0 18px; order: 1; }
+  li.item .row .task-text { flex: 1 1 calc(100% - 120px); min-width: 0; order: 2; white-space: normal; overflow-wrap: anywhere; }
+  li.item .row .priority-tag { order: 3; flex: 0 0 auto; }
+  li.item .row .cell { order: 4; flex: 0 0 auto; max-width: 48%; }
+  li.item .row .cell:empty { display: none; }
+  li.item .row .cell-category, li.item .row .cell:first-of-type { margin-left: 26px; }
+  .notes-panel { margin-left: 0; }
+  .search-row, .sort-row { flex-wrap: wrap; }
+  .search-row input { min-width: 0; width: 100%; }
+  .new-task-window, .modal { width: 100%; max-width: 100%; }
+  .toast { bottom: 70px; }
+  #todo-userbar { font-size: 11px; }
+  .tabs .tab { padding-left: 6px; padding-right: 6px; }
+}
