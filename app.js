@@ -242,13 +242,21 @@
     }
   }
 
-  const VALID_THEMES = ['warm', 'warmdark', 'light', 'dark', 'colourful', 'notebook', 'forest', 'ocean', 'sunset', 'slate', 'bw', 'wb', 'terminal'];
+  const VALID_THEMES = ['auto', 'warm', 'warmdark', 'light', 'dark', 'colourful', 'notebook', 'forest', 'ocean', 'sunset', 'slate', 'bw', 'wb', 'terminal'];
+
+  let themeSetting = 'auto';
+  const darkQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  if (darkQuery && darkQuery.addEventListener) {
+    darkQuery.addEventListener('change', () => { if (themeSetting === 'auto') applyTheme('auto'); });
+  }
 
   function applyTheme(theme) {
-    if (!VALID_THEMES.includes(theme)) theme = 'warm';
+    if (!VALID_THEMES.includes(theme)) theme = 'auto';
+    themeSetting = theme;
+    const shown = theme === 'auto' ? ((darkQuery && darkQuery.matches) ? 'warmdark' : 'warm') : theme;
     document.body.classList.remove('theme-warm', 'theme-warmdark', 'theme-dark', 'theme-colourful', 'theme-notebook', 'theme-forest', 'theme-ocean', 'theme-sunset', 'theme-slate', 'theme-bw', 'theme-wb', 'theme-terminal');
-    if (theme !== 'light') {
-      document.body.classList.add('theme-' + theme);
+    if (shown !== 'light') {
+      document.body.classList.add('theme-' + shown);
     }
     document.querySelectorAll('.theme-option').forEach(btn => {
       btn.classList.toggle('selected', btn.dataset.theme === theme);
@@ -421,6 +429,18 @@
     archiveOldCompleted(false);
   }, 8000);
 
+  (function showWhoseList() {
+    const u = (new URLSearchParams(location.search).get('u') || '').toLowerCase();
+    const users = (window.TODO_CONFIG && TODO_CONFIG.users) || [];
+    const me = users.find(x => x.id === u);
+    const name = me ? me.name : u;
+    if (!name) return;
+    ['appLabelHeader', 'appLabelFooter'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = name;
+    });
+  })();
+
   window.addEventListener('todo-remote-update', async () => {
     try {
       const r = await storageGet(STORAGE_KEY);
@@ -441,9 +461,9 @@
   async function load() {
     try {
       const themeResult = await storageGet(THEME_KEY);
-      applyTheme(themeResult && themeResult.value ? themeResult.value : 'warm');
+      applyTheme(themeResult && themeResult.value ? themeResult.value : 'auto');
     } catch (e) {
-      applyTheme('warm');
+      applyTheme('auto');
     }
     try {
       const result = await storageGet(STORAGE_KEY);
@@ -700,6 +720,9 @@
         const isDueToday = !item.done && item.dueDate === todayDateString();
         const isRowOverdue = !item.done && isPastDue(item.dueDate);
         li.className = 'item' + (item.done ? ' done' : '') + (isDueToday ? ' due-today' : '') + (isRowOverdue ? ' overdue-row' : '');
+        li.dataset.id = item.id;
+        li.dataset.group = group ? String(group.key) : '';
+        li.draggable = !expandedIds.has(item.id);
 
         const box = document.createElement('div');
         box.className = 'box';
@@ -721,7 +744,7 @@
         if (!item.done && item.pending && page === 'active') {
           const sleepTag = document.createElement('span');
           sleepTag.className = 'category-tag sleep-tag';
-          sleepTag.textContent = item.snoozeUntil ? ('Asleep til ' + toUKDateShort(item.snoozeUntil)) : 'Pending';
+          sleepTag.textContent = item.snoozeUntil ? ('\u263E Asleep til ' + toUKDateShort(item.snoozeUntil)) : '\u23F8 Pending';
           categoryCell.appendChild(sleepTag);
         }
 
@@ -1282,6 +1305,7 @@
 
     newTaskOverlay.classList.toggle('open', page === 'active' && addFormOpen);
     newTaskBtn.style.display = page === 'active' ? 'block' : 'none';
+    document.querySelector('.quick-add').style.display = page === 'active' ? 'flex' : 'none';
     clearBtn.style.display = page === 'done' && completed > 0 ? 'inline' : 'none';
     exportBtn.style.display = page === 'done' && completed > 0 ? 'inline' : 'none';
 
@@ -2015,6 +2039,108 @@
     reader.readAsText(file);
   });
 
+
+  // ---------- quick add ----------
+  const quickAdd = document.getElementById('quickAdd');
+  function quickAddTask() {
+    const value = quickAdd.value.trim();
+    if (!value) return;
+    todos.push({ id: uid(), text: value, done: false, createdAt: Date.now(), priority: 'medium', dueDate: '', category: '', assignedTo: '', assignees: [], assignedBy: '', repeat: '' });
+    quickAdd.value = '';
+    render();
+    save();
+    showToast('Added.');
+  }
+  quickAdd.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); quickAddTask(); }
+  });
+  document.getElementById('quickAddMore').addEventListener('click', () => {
+    const text = quickAdd.value;
+    quickAdd.value = '';
+    newTaskBtn.click();
+    input.value = text;
+    input.focus();
+  });
+
+  // ---------- drag to reorder (within a group) ----------
+  let dragId = null;
+  function clearDropMarks() {
+    listEl.querySelectorAll('.drop-before, .drop-after, .dragging').forEach(el => el.classList.remove('drop-before', 'drop-after', 'dragging'));
+  }
+  listEl.addEventListener('dragstart', e => {
+    const li = e.target.closest && e.target.closest('li.item');
+    if (!li || !li.dataset.id) return;
+    dragId = li.dataset.id;
+    li.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', dragId); } catch (err) { /* ignore */ }
+  });
+  listEl.addEventListener('dragover', e => {
+    const li = e.target.closest && e.target.closest('li.item');
+    if (!dragId || !li || li.dataset.id === dragId) return;
+    const dragged = listEl.querySelector('li.item[data-id="' + dragId + '"]');
+    if (!dragged || dragged.dataset.group !== li.dataset.group) return;
+    e.preventDefault();
+    const after = e.clientY > li.getBoundingClientRect().top + li.offsetHeight / 2;
+    listEl.querySelectorAll('.drop-before, .drop-after').forEach(el => el.classList.remove('drop-before', 'drop-after'));
+    li.classList.add(after ? 'drop-after' : 'drop-before');
+  });
+  listEl.addEventListener('drop', e => {
+    const li = e.target.closest && e.target.closest('li.item');
+    if (!dragId || !li) return;
+    e.preventDefault();
+    const after = li.classList.contains('drop-after');
+    const from = todos.findIndex(t => t.id === dragId);
+    const moved = from >= 0 ? todos.splice(from, 1)[0] : null;
+    let to = todos.findIndex(t => t.id === li.dataset.id);
+    if (moved && to >= 0) {
+      todos.splice(after ? to + 1 : to, 0, moved);
+      if (sortBy === 'name') showToast('Reordering has no effect when sorted by name.');
+    } else if (moved) {
+      todos.splice(from, 0, moved);
+    }
+    dragId = null;
+    clearDropMarks();
+    render();
+    save();
+  });
+  listEl.addEventListener('dragend', () => { dragId = null; clearDropMarks(); });
+
+  // ---------- keyboard shortcuts and focus return ----------
+  const overlayClosers = [
+    ['newTaskOverlay', 'newTaskWindowClose'],
+    ['settingsOverlay', 'closeSettingsBtn'],
+    ['dueSummaryOverlay', 'closeDueSummaryBtn'],
+    ['reportOverlay', 'reportClose']
+  ];
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      for (const pair of overlayClosers) {
+        const ov = document.getElementById(pair[0]);
+        if (ov && ov.classList.contains('open')) { document.getElementById(pair[1]).click(); return; }
+      }
+      if (document.activeElement && document.activeElement.blur && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) document.activeElement.blur();
+      return;
+    }
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '') || (document.activeElement && document.activeElement.isContentEditable);
+    if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (document.querySelector('.modal-overlay.open, .new-task-overlay.open')) return;
+    if (e.key === 'n') { e.preventDefault(); quickAdd.focus(); }
+    else if (e.key === '/') { e.preventDefault(); searchInput.focus(); }
+  });
+
+  let lastOutsideFocus = null;
+  document.addEventListener('focusin', e => {
+    if (!e.target.closest || !e.target.closest('.modal-overlay, .new-task-overlay')) lastOutsideFocus = e.target;
+  });
+  document.querySelectorAll('.modal-overlay, .new-task-overlay').forEach(ov => {
+    let wasOpen = false;
+    new MutationObserver(() => {
+      const isOpen = ov.classList.contains('open');
+      if (wasOpen && !isOpen && lastOutsideFocus && document.contains(lastOutsideFocus)) lastOutsideFocus.focus();
+      wasOpen = isOpen;
+    }).observe(ov, { attributes: true, attributeFilter: ['class'] });
+  });
 
   addBtn.addEventListener('click', addItem);
   input.addEventListener('keydown', e => {
