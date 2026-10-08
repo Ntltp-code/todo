@@ -2,6 +2,7 @@
   const emptyMsg = document.getElementById('emptyMsg');
   const listHeader = document.getElementById('listHeader');
   const lhCompleted = document.getElementById('lhCompleted');
+  const lhSleep = document.getElementById('lhSleep');
   const countLabel = document.getElementById('countLabel');
   const input = document.getElementById('newItem');
   const dueDateInput = document.getElementById('dueDateInput');
@@ -154,12 +155,31 @@
     const todayStr = todayDateString();
     let changed = false;
     todos.forEach(t => {
-      if (!t.done && t.pending && t.dueDate && t.dueDate <= todayStr) {
-        t.pending = false;
-        changed = true;
+      if (!t.done && t.pending) {
+        const stillSleeping = t.snoozeUntil && t.snoozeUntil > todayStr;
+        if (t.snoozeUntil && t.snoozeUntil <= todayStr) {
+          // Sleep timer has run out - wake it up, regardless of due date.
+          t.pending = false;
+          t.snoozeUntil = null;
+          changed = true;
+        } else if (!stillSleeping && t.dueDate && t.dueDate <= todayStr) {
+          // No active sleep timer - fall back to the normal due-date wake check.
+          t.pending = false;
+          changed = true;
+        }
       }
     });
     return changed;
+  }
+
+  function addDaysToToday(days) {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + days);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
   }
 
   function todayDateString() {
@@ -222,11 +242,11 @@
     }
   }
 
-  const VALID_THEMES = ['light', 'dark', 'colourful', 'notebook', 'forest', 'ocean', 'sunset', 'slate', 'bw', 'wb', 'terminal'];
+  const VALID_THEMES = ['warm', 'warmdark', 'light', 'dark', 'colourful', 'notebook', 'forest', 'ocean', 'sunset', 'slate', 'bw', 'wb', 'terminal'];
 
   function applyTheme(theme) {
-    if (!VALID_THEMES.includes(theme)) theme = 'light';
-    document.body.classList.remove('theme-dark', 'theme-colourful', 'theme-notebook', 'theme-forest', 'theme-ocean', 'theme-sunset', 'theme-slate', 'theme-bw', 'theme-wb', 'theme-terminal');
+    if (!VALID_THEMES.includes(theme)) theme = 'warm';
+    document.body.classList.remove('theme-warm', 'theme-warmdark', 'theme-dark', 'theme-colourful', 'theme-notebook', 'theme-forest', 'theme-ocean', 'theme-sunset', 'theme-slate', 'theme-bw', 'theme-wb', 'theme-terminal');
     if (theme !== 'light') {
       document.body.classList.add('theme-' + theme);
     }
@@ -243,6 +263,18 @@
   document.querySelectorAll('.theme-option').forEach(btn => {
     btn.addEventListener('click', () => selectTheme(btn.dataset.theme));
   });
+
+  // Stamp each task that changed since the last save, so sync can tell which edit is newest.
+  const savedFingerprints = new Map();
+  function fingerprint(t) { return JSON.stringify(Object.assign({}, t, { updatedAt: 0 })); }
+  function stampUpdated() {
+    const now = Date.now();
+    todos.forEach(t => {
+      const fp = fingerprint(t);
+      if (savedFingerprints.has(t.id) ? savedFingerprints.get(t.id) !== fp : !t.updatedAt) t.updatedAt = now;
+      savedFingerprints.set(t.id, fp);
+    });
+  }
 
   // ---------- toasts, undo and in-page confirm ----------
   const toastBox = document.getElementById('toastBox');
@@ -326,6 +358,7 @@
     copy.id = uid();
     copy.done = false;
     copy.pending = false;
+    copy.snoozeUntil = null;
     copy.completedAt = null;
     copy.createdAt = Date.now();
     copy.dueDate = next;
@@ -334,118 +367,72 @@
     showToast('Repeating task: next one due ' + formatDate(next) + '.');
   }
 
-  // ---------- sharing tasks with the other user ----------
-  const ME = (new URLSearchParams(location.search).get('u') || '').toLowerCase();
-  const USER_LIST = (window.TODO_CONFIG && TODO_CONFIG.users) || [];
-  function userName(id) { const u = USER_LIST.find(x => x.id === id); return u ? u.name : id; }
-  function otherUsers() { return USER_LIST.filter(u => u.id !== ME); }
+  const ARCHIVE_KEY = STORAGE_PREFIX + 'archive';
+  let archivedTasks = [];
 
-  async function sendTaskTo(item, user) {
-    const ok = await askConfirm('Send a copy of "' + item.text + '" to ' + user.name + '\'s list?', 'Send');
-    if (!ok) return;
-    const copy = JSON.parse(JSON.stringify(item));
-    copy.id = uid();
-    copy.done = false;
-    copy.pending = false;
-    copy.completedAt = null;
-    copy.createdAt = Date.now();
-    copy.updatedAt = Date.now();
-    copy.sentFrom = userName(ME);
-    copy.assignedBy = userName(ME);
-    copy.subtasks = (item.subtasks || []).map(x => Object.assign({}, x, { id: uid() }));
-    try {
-      await TodoGH.sendTask(user.id, copy, STORAGE_KEY);
-      showToast('Sent to ' + user.name + '.');
-    } catch (e) {
-      showToast('Could not send: ' + e.message);
-    }
-  }
-
-  // ---------- archiving old completed tasks ----------
+  // ---------- archiving old completed tasks (synced with the rest of your list) ----------
   const ARCHIVE_DAYS = 90;
   const archiveStatusEl = document.getElementById('archiveStatus');
-  function archiveSay(msg) { if (archiveStatusEl) archiveStatusEl.textContent = msg; }
+  function archiveSay() {
+    if (archiveStatusEl) archiveStatusEl.textContent = archivedTasks.length + ' task' + (archivedTasks.length === 1 ? '' : 's') + ' in the archive.';
+  }
 
   async function archiveOldCompleted(manual) {
-    if (!TodoGH.cfg().token) {
-      if (manual) showToast('Connect to GitHub first to use the archive.');
-      return;
-    }
     const cutoff = Date.now() - ARCHIVE_DAYS * 86400000;
     const old = todos.filter(t => t.done && t.completedAt && t.completedAt < cutoff);
     if (!old.length) {
       if (manual) showToast('Nothing completed more than ' + ARCHIVE_DAYS + ' days ago.');
       return;
     }
-    try {
-      await TodoGH.archiveTasks(ME, old);
-      const ids = new Set(old.map(t => t.id));
-      todos = todos.filter(t => !ids.has(t.id));
-      render();
-      save();
-      showToast('Archived ' + old.length + ' completed task' + (old.length === 1 ? '' : 's') + ' older than ' + ARCHIVE_DAYS + ' days.');
-      refreshArchiveCount();
-    } catch (e) {
-      if (manual) showToast('Could not archive: ' + e.message);
-    }
-  }
-
-  async function refreshArchiveCount() {
-    if (!TodoGH.cfg().token) { archiveSay('Connect to GitHub to use the archive.'); return; }
-    try {
-      const a = await TodoGH.readArchive(ME);
-      archiveSay(a.length + ' task' + (a.length === 1 ? '' : 's') + ' in the archive.');
-    } catch (e) { archiveSay(''); }
+    const have = new Set(archivedTasks.map(t => t.id));
+    old.forEach(t => { if (!have.has(t.id)) archivedTasks.push(t); });
+    const ids = new Set(old.map(t => t.id));
+    todos = todos.filter(t => !ids.has(t.id));
+    await queuedStorageSet(ARCHIVE_KEY, JSON.stringify(archivedTasks));
+    render();
+    save();
+    archiveSay();
+    showToast('Archived ' + old.length + ' completed task' + (old.length === 1 ? '' : 's') + ' older than ' + ARCHIVE_DAYS + ' days.');
   }
 
   async function restoreArchive() {
-    try {
-      const a = await TodoGH.readArchive(ME);
-      if (!a.length) { showToast('The archive is empty.'); return; }
-      const have = new Set(todos.map(t => t.id));
-      a.forEach(t => { if (!have.has(t.id)) todos.push(t); });
-      await TodoGH.clearArchive(ME);
-      render();
-      save();
-      showToast('Restored ' + a.length + ' task' + (a.length === 1 ? '' : 's') + ' from the archive.');
-      refreshArchiveCount();
-    } catch (e) {
-      showToast('Could not restore: ' + e.message);
-    }
+    if (!archivedTasks.length) { showToast('The archive is empty.'); return; }
+    const have = new Set(todos.map(t => t.id));
+    const n = archivedTasks.length;
+    archivedTasks.forEach(t => { if (!have.has(t.id)) todos.push(t); });
+    archivedTasks = [];
+    await queuedStorageSet(ARCHIVE_KEY, JSON.stringify(archivedTasks));
+    render();
+    save();
+    archiveSay();
+    showToast('Restored ' + n + ' task' + (n === 1 ? '' : 's') + ' from the archive.');
   }
 
   document.getElementById('archiveNowBtn').addEventListener('click', () => archiveOldCompleted(true));
   document.getElementById('restoreArchiveBtn').addEventListener('click', restoreArchive);
-  document.getElementById('settingsBtn').addEventListener('click', refreshArchiveCount);
+  document.getElementById('settingsBtn').addEventListener('click', archiveSay);
 
-  // once a day, quietly archive on load
   setTimeout(() => {
     try {
-      const k = 'todo_last_archive_' + ME;
+      const k = 'work_last_archive_run';
       if (Date.now() - (parseInt(localStorage.getItem(k), 10) || 0) < 86400000) return;
       localStorage.setItem(k, String(Date.now()));
     } catch (e) { /* storage unavailable: archive anyway */ }
     archiveOldCompleted(false);
   }, 8000);
 
-  // pick up changes another device saved to GitHub
   window.addEventListener('todo-remote-update', async () => {
     try {
-      const beforeIds = new Set(todos.map(t => t.id));
       const r = await storageGet(STORAGE_KEY);
       todos = r ? JSON.parse(r.value) : [];
-      const received = todos.filter(t => t.sentFrom && !beforeIds.has(t.id) && !t.seenSent);
-      if (received.length) {
-        received.forEach(t => { t.seenSent = true; });
-        showToast(received[0].sentFrom + ' sent you ' + (received.length === 1 ? '"' + received[0].text + '"' : received.length + ' tasks') + '.');
-        save();
-      }
       const c = await storageGet(CATEGORIES_KEY);
       if (c) { const a = JSON.parse(c.value); if (Array.isArray(a)) categories = a; }
       const a2 = await storageGet(ASSIGNEES_KEY);
       if (a2) { const a = JSON.parse(a2.value); if (Array.isArray(a)) assignees = a; }
       const b = await storageGet(ASSIGNED_BY_KEY);
       if (b) { const a = JSON.parse(b.value); if (Array.isArray(a)) assignedByOptions = a; }
+      const ar = await storageGet(ARCHIVE_KEY);
+      if (ar) { const a = JSON.parse(ar.value); if (Array.isArray(a)) archivedTasks = a; }
       populateCategorySelect(); renderCategoryList(); populateAssigneeChecklist(); renderAssigneeList(); populateAssignedBySelect(); renderAssignedByList();
       render();
     } catch (e) { /* keep what is on screen */ }
@@ -454,9 +441,9 @@
   async function load() {
     try {
       const themeResult = await storageGet(THEME_KEY);
-      applyTheme(themeResult && themeResult.value ? themeResult.value : 'light');
+      applyTheme(themeResult && themeResult.value ? themeResult.value : 'warm');
     } catch (e) {
-      applyTheme('light');
+      applyTheme('warm');
     }
     try {
       const result = await storageGet(STORAGE_KEY);
@@ -523,6 +510,15 @@
     } catch (e) {
       // no saved email yet
     }
+    try {
+      const archResult = await storageGet(ARCHIVE_KEY);
+      if (archResult && archResult.value) {
+        const a = JSON.parse(archResult.value);
+        if (Array.isArray(a)) archivedTasks = a;
+      }
+    } catch (e) {
+      // no archive yet
+    }
     updateFooterStatus();
     populateCategorySelect();
     renderCategoryList();
@@ -554,18 +550,6 @@
 
   let saveInFlight = false;
   let savePending = false;
-
-  // Stamp each task that changed since the last save, so sync can tell which edit is newest.
-  const savedFingerprints = new Map();
-  function fingerprint(t) { return JSON.stringify(Object.assign({}, t, { updatedAt: 0 })); }
-  function stampUpdated() {
-    const now = Date.now();
-    todos.forEach(t => {
-      const fp = fingerprint(t);
-      if (savedFingerprints.has(t.id) ? savedFingerprints.get(t.id) !== fp : !t.updatedAt) t.updatedAt = now;
-      savedFingerprints.set(t.id, fp);
-    });
-  }
 
   async function save() {
     if (saveInFlight) {
@@ -651,6 +635,11 @@
     const todayStr = todayDateString();
     const visible = todos
       .filter(t => {
+        // Overdue/Due Today filters match by date alone, including tasks that
+        // are currently pending or sleeping - being asleep doesn't make a
+        // task any less overdue, so it shouldn't be hidden from this view.
+        if (page === 'active' && filterMode === 'dueToday') return !t.done && t.dueDate === todayStr;
+        if (page === 'active' && filterMode === 'overdue') return !t.done && isPastDue(t.dueDate);
         if (page === 'done') return t.done;
         if (page === 'pending') return !t.done && t.pending;
         return !t.done && !t.pending;
@@ -660,12 +649,6 @@
         const hay = [t.text, t.category, (t.assignees || []).join(' '), t.assignedTo, t.assignedBy,
           (t.subtasks || []).map(x => x.text).join(' ')].join(' ').toLowerCase();
         return searchTerm.split(/\s+/).every(w => hay.includes(w));
-      })
-      .filter(t => {
-        if (page !== 'active' || !filterMode) return true;
-        if (filterMode === 'dueToday') return t.dueDate === todayStr;
-        if (filterMode === 'overdue') return isPastDue(t.dueDate);
-        return true;
       })
       .sort(sortComparators[sortBy] || sortComparators.priority);
 
@@ -686,6 +669,8 @@
     listHeader.style.display = visible.length === 0 ? 'none' : 'grid';
     listHeader.classList.toggle('grid-done', page === 'done');
     lhCompleted.style.display = page === 'done' ? 'block' : 'none';
+    listHeader.classList.toggle('grid-pending', page === 'pending');
+    lhSleep.style.display = page === 'pending' ? 'block' : 'none';
 
     if (visible.length === 0) {
       emptyMsg.textContent = searchTerm
@@ -733,6 +718,12 @@
           categoryTag.textContent = item.category;
           categoryCell.appendChild(categoryTag);
         }
+        if (!item.done && item.pending && page === 'active') {
+          const sleepTag = document.createElement('span');
+          sleepTag.className = 'category-tag sleep-tag';
+          sleepTag.textContent = item.snoozeUntil ? ('Asleep til ' + toUKDateShort(item.snoozeUntil)) : 'Pending';
+          categoryCell.appendChild(sleepTag);
+        }
 
         const itemAssignees = item.assignees || (item.assignedTo ? [item.assignedTo] : []);
         const assigneeCell = document.createElement('div');
@@ -779,6 +770,15 @@
             completedCell.textContent = 'Done ' + formatDate(item.completedAt);
           }
           row.appendChild(completedCell);
+        }
+
+        if (page === 'pending') {
+          row.classList.add('grid-pending');
+          const sleepCell = document.createElement('div');
+          sleepCell.className = 'cell cell-sleep' + (item.snoozeUntil ? '' : ' no-timer');
+          sleepCell.textContent = item.snoozeUntil ? toUKDateShort(item.snoozeUntil) : 'No timer';
+          if (item.snoozeUntil) sleepCell.title = 'Wakes up on ' + toUKDateShort(item.snoozeUntil);
+          row.appendChild(sleepCell);
         }
 
         row.appendChild(priorityTag);
@@ -1193,6 +1193,9 @@
 
           let pendingToggleBtn = null;
           let markCompleteBtn = null;
+          let sleep1WeekBtn = null;
+          let sleepUntilInput = null;
+          let snoozeInfo = null;
           if (!item.done) {
             pendingToggleBtn = document.createElement('button');
             pendingToggleBtn.type = 'button';
@@ -1200,6 +1203,7 @@
             pendingToggleBtn.textContent = item.pending ? 'Move to Active' : 'Move to Pending';
             pendingToggleBtn.addEventListener('click', () => {
               item.pending = !item.pending;
+              if (!item.pending) item.snoozeUntil = null;
               save();
               toggleExpanded(item.id);
             });
@@ -1212,23 +1216,46 @@
               markCompleteBtn.addEventListener('click', () => {
                 toggle(item.id);
               });
+
+              if (item.snoozeUntil) {
+                snoozeInfo = document.createElement('span');
+                snoozeInfo.className = 'snooze-info';
+                snoozeInfo.textContent = 'Sleeping until ' + toUKDateShort(item.snoozeUntil);
+              }
+            } else {
+              sleep1WeekBtn = document.createElement('button');
+              sleep1WeekBtn.type = 'button';
+              sleep1WeekBtn.className = 'sleep-toggle';
+              sleep1WeekBtn.textContent = 'Sleep 1 Week';
+              sleep1WeekBtn.addEventListener('click', () => {
+                item.pending = true;
+                item.snoozeUntil = addDaysToToday(7);
+                save();
+                toggleExpanded(item.id);
+              });
+
+              sleepUntilInput = document.createElement('input');
+              sleepUntilInput.type = 'date';
+              sleepUntilInput.className = 'sleep-until-input';
+              sleepUntilInput.title = 'Sleep until a chosen date';
+              sleepUntilInput.min = addDaysToToday(1);
+              sleepUntilInput.addEventListener('change', () => {
+                if (!sleepUntilInput.value) return;
+                item.pending = true;
+                item.snoozeUntil = sleepUntilInput.value;
+                save();
+                toggleExpanded(item.id);
+              });
             }
           }
 
-          const sendBtns = otherUsers().map(u => {
-            const b = document.createElement('button');
-            b.type = 'button';
-            b.className = 'pending-toggle';
-            b.textContent = 'Send copy to ' + u.name;
-            b.addEventListener('click', () => sendTaskTo(item, u));
-            return b;
-          });
-
           panelFooter.appendChild(remove);
           if (cancelTaskDeleteBtn) panelFooter.appendChild(cancelTaskDeleteBtn);
-          sendBtns.forEach(b => panelFooter.appendChild(b));
           if (pendingToggleBtn) panelFooter.appendChild(pendingToggleBtn);
+          if (sleep1WeekBtn) panelFooter.appendChild(sleep1WeekBtn);
+          if (sleepUntilInput) panelFooter.appendChild(sleepUntilInput);
           if (markCompleteBtn) panelFooter.appendChild(markCompleteBtn);
+          if (snoozeInfo) panelFooter.appendChild(snoozeInfo);
           panelFooter.appendChild(saveTaskBtn);
 
           panel.appendChild(editFields);
@@ -1293,7 +1320,7 @@
     tabActive.classList.toggle('active', page === 'active');
     tabPending.classList.toggle('active', page === 'pending');
     tabDone.classList.toggle('active', page === 'done');
-    [tabActive, tabPending, tabDone].forEach(function (b) { b.setAttribute('aria-selected', b.classList.contains('active') ? 'true' : 'false'); });
+    [tabActive, tabPending, tabDone].forEach(b => b.setAttribute('aria-selected', b.classList.contains('active') ? 'true' : 'false'));
     render();
   }
 
@@ -1818,6 +1845,8 @@
       '.rpt-priority-medium{color:#96631e;border-color:#96631e;}' +
       '.rpt-priority-low{color:#3f6b4f;border-color:#3f6b4f;}' +
       '.rpt-task-meta{font-size:11px;color:#666;margin-top:4px;display:flex;gap:14px;flex-wrap:wrap;}' +
+      '.rpt-task-meta span{margin-right:14px;}' +
+      '.rpt-task-meta span:last-child{margin-right:0;}' +
       '.rpt-subtasks{margin:6px 0 0;padding-left:20px;font-size:12px;}' +
       '.rpt-subtasks li{margin-bottom:2px;}' +
       '.rpt-sub-done{color:#888;text-decoration:line-through;}' +
@@ -2012,6 +2041,7 @@
     filterMode = (filterMode === mode) ? null : mode;
     page = 'active';
     tabActive.classList.add('active');
+    tabPending.classList.remove('active');
     tabDone.classList.remove('active');
     render();
   }
@@ -2045,7 +2075,13 @@
     if (e.target === newTaskOverlay) closeNewTaskWindow();
   });
 
-  tabActive.addEventListener('click', () => setPage('active'));
+  tabActive.addEventListener('click', () => {
+    // Clicking the main "To-do" tab always means "show me everything" -
+    // clear any leftover Due Today/Overdue filter, even if we're already
+    // technically on the active page (e.g. arrived here via a filter).
+    filterMode = null;
+    setPage('active');
+  });
   tabPending.addEventListener('click', () => setPage('pending'));
   tabDone.addEventListener('click', () => setPage('done'));
 

@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>To-do</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Special+Elite&display=swap" rel="stylesheet">
-<meta name="theme-color" content="#2F6FE4">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Special+Elite&family=Source+Serif+4:wght@500;600;700&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#C96442">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
@@ -36,7 +36,7 @@
         <span class="app-label" id="appLabelHeader">Work</span>
       </h1>
       <p id="dateLabel">today</p>
-      <p class="version-label">v8.7 (Work)</p>
+      <p class="version-label">v10.0</p>
     </header>
 
     <p class="due-today-top" id="dueTodayTop">
@@ -121,6 +121,7 @@
       <span class="lh-assignee">Assigned</span>
       <span class="lh-due">Due</span>
       <span class="lh-completed" id="lhCompleted">Date Completed</span>
+      <span class="lh-sleep" id="lhSleep">Sleeping Until</span>
       <span class="lh-priority">Priority</span>
     </div>
 
@@ -219,6 +220,14 @@
           <button class="theme-option" type="button" data-theme="wb">
             <span class="theme-swatch theme-swatch-wb"></span>
             <span>White &amp; Black</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="warm">
+            <span class="theme-swatch theme-swatch-warm"></span>
+            <span>Warm</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="warmdark">
+            <span class="theme-swatch theme-swatch-warmdark"></span>
+            <span>Warm Dark</span>
           </button>
           <button class="theme-option" type="button" data-theme="terminal">
             <span class="theme-swatch theme-swatch-terminal"></span>
@@ -328,7 +337,7 @@
         <span class="accordion-arrow">&#9656;</span>
       </button>
       <div class="accordion-content" id="archiveContent">
-        <p class="settings-hint">Completed tasks older than 90 days are moved to a separate archive file once a day, so your list stays fast and small. Nothing is deleted &mdash; you can restore them here.</p>
+        <p class="settings-hint">Completed tasks older than 90 days are moved out of your list once a day, so it stays quick. Nothing is deleted &mdash; you can restore everything here.</p>
         <div id="archiveStatus" class="import-status"></div>
         <button id="archiveNowBtn" class="export-all-btn" type="button">Archive old tasks now</button>
         <button id="restoreArchiveBtn" class="export-all-btn report-btn" type="button">Restore all archived tasks</button>
@@ -367,6 +376,16 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v10.0</span> New warm and warm dark themes (warm is the default); search box; repeating tasks (daily, weekdays, weekly, monthly); undo for deletes and clears; in-page dialogs and report instead of browser pop-ups; no more "leave site" warning; phone-friendly layout; automatic archive of completed tasks older than 90 days; syncing now merges changes task by task so two devices can no longer overwrite each other.</li>
+          <li><span class="changelog-version">v9.6</span> The column title bar (Task, Category, Assigned, Due, Sleeping Until / Date Completed, Priority) can now wrap onto two lines, so longer titles like "Sleeping Until" and "Date Completed" stack neatly. The gap between columns was also widened (6px to 12px) in both the title bar and the task rows, so they stay aligned with more breathing room.</li>
+          <li><span class="changelog-version">v9.5</span> The Pending tab now has a "Sleeping Until" column showing the date each sleeping/snoozed task will wake up and return to the To-do tab (or "No timer" for tasks simply moved to Pending without a sleep date).</li>
+          <li><span class="changelog-version">v9.4</span> Fixed a bug where clicking the "To-do" tab after using the Due Today/Overdue filter wouldn't actually clear it &mdash; since you were already on the Active page, the stale filter silently stayed applied, making the tab look empty if nothing matched it. Clicking "To-do" now always clears any active filter and shows the full list.</li>
+          <li><span class="changelog-version">v9.3</span> Checked all the other filters/counts for the same pending-vs-overdue mismatch as v9.2: the "This Week's Summary" pop-up, the Highlights section on the Summary Report, and "Email Priority Tasks" already counted sleeping/pending tasks correctly, so no change needed there. Also fixed a smaller related bug: clicking Overdue/Due Today while on the Pending tab left both the Active and Pending tabs looking highlighted at once &mdash; the Pending tab now correctly un-highlights.</li>
+          <li><span class="changelog-version">v9.2</span> Fixed a bug where clicking the "Overdue" (or "Due Today") banner would miss any task that was pending or sleeping &mdash; the filter only searched the Active tab, which excludes pending tasks. It now matches by date across pending/sleeping tasks too, since being asleep doesn't make a task any less overdue. Pending/sleeping tasks that show up this way are now marked with a small "Pending" or "Asleep til&hellip;" tag so it's clear why they're not in their usual tab.</li>
+          <li><span class="changelog-version">v9.1</span> Replaced the "Sleep 2 Weeks" button with a date picker, so you can choose exactly when a sleeping task should wake up instead of being limited to a fixed 2-week jump. "Sleep 1 Week" is still there as a quick option.</li>
+          <li><span class="changelog-version">v9.0</span> Fixed a bug where a sleeping task could jump straight back to Active within a minute if it already had its own due date in the past or today &mdash; the regular due-date wake check was firing independently of the sleep timer. Now, while a sleep timer is still running, the due date is ignored and only the sleep timer controls when the task wakes up.</li>
+          <li><span class="changelog-version">v8.9</span> Added a "sleep" timer for tasks &mdash; open a task and click "Sleep 1 Week" or "Sleep 2 Weeks" to move it to the Pending tab and have it wake itself back up to Active automatically once the timer runs out (checked the same way due-date-triggered pending tasks already are). While sleeping, the task panel shows "Sleeping until" the wake date; manually moving it back to Active cancels the timer.</li>
+          <li><span class="changelog-version">v8.8</span> "Assigned By / From" was already being included in the Summary Report (added at v8.4) &mdash; confirmed working and hardened the spacing between meta items (Category/Assigned/From/Due) with a CSS fallback, verified by actually rendering the report.</li>
           <li><span class="changelog-version">v8.7</span> Reverted "Save task" back to v8.5 behavior (just saves, keeps the panel open). Added a separate "Close" button below it to roll up the panel when you're done.</li>
           <li><span class="changelog-version">v8.6</span> "Save task" now closes/rolls up the task panel again after saving (Work only &mdash; reverting the v8.1 change that kept it open). Home is unaffected and still leaves the panel open.</li>
           <li><span class="changelog-version">v8.5</span> Added a radio option to "Email Priority Tasks": "Also open the Summary Report to attach." Since browsers can't attach files to a mailto draft automatically, this opens the report in a separate tab (with its "Print / Save as PDF" button) and adds a note in the email reminding you to attach it manually.</li>
@@ -465,7 +484,7 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="dueSummaryOverlay" role="dialog" aria-modal="true" aria-label="This week's summary">
+<div class="modal-overlay" id="dueSummaryOverlay" role="dialog" aria-modal="true" aria-label="Summary">
   <div class="modal due-summary-modal">
     <div class="modal-header">
       <h2>This Week's Summary</h2>
