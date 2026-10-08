@@ -41,9 +41,7 @@
 
     <p class="due-today-top" id="dueTodayTop">
       <span class="filter-trigger" id="dueTodayTopTrigger">Due today: <span id="dueTodayTopCount">0</span></span>
-      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
       <span class="filter-trigger" id="pendingTopTrigger">Pending: <span id="pendingTopCount">0</span></span>
-      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
       <span class="filter-trigger" id="overdueTopTrigger">Overdue: <span id="overdueTopCount">0</span></span>
     </p>
 
@@ -51,6 +49,11 @@
       <button class="tab active" id="tabActive" type="button" role="tab" aria-selected="true">To-do</button>
       <button class="tab" id="tabPending" type="button" role="tab" aria-selected="false">Pending</button>
       <button class="tab" id="tabDone" type="button" role="tab" aria-selected="false">Completed</button>
+    </div>
+
+    <div class="quick-add">
+      <input type="text" id="quickAdd" placeholder="Add a task and press Enter..." maxlength="280" autocomplete="off" aria-label="Quick add a task">
+      <button type="button" id="quickAddMore">Details</button>
     </div>
 
     <div class="search-row">
@@ -220,6 +223,10 @@
           <button class="theme-option" type="button" data-theme="wb">
             <span class="theme-swatch theme-swatch-wb"></span>
             <span>White &amp; Black</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="auto">
+            <span class="theme-swatch theme-swatch-auto"></span>
+            <span>Match my device</span>
           </button>
           <button class="theme-option" type="button" data-theme="warm">
             <span class="theme-swatch theme-swatch-warm"></span>

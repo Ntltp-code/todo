@@ -251,29 +251,36 @@
   window.addEventListener('online', function () { if (dirty) push(false); else pull(); });
 
   function mountBar() {
-    var b = document.createElement('div');
-    b.id = 'todo-userbar';
-    b.setAttribute('role', 'status');
-    b.setAttribute('aria-live', 'polite');
-    b.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:99999;display:flex;gap:10px;align-items:center;padding:7px 12px;border-radius:999px;background:rgba(20,20,25,.92);color:#fff;font:12px/1.2 system-ui,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.3);max-width:calc(100vw - 20px)';
-    var who = document.createElement('b'); who.textContent = NAMES[U] || U;
-    var dot = document.createElement('span'); dot.style.cssText = 'width:8px;height:8px;border-radius:50%;flex:none';
-    var msg = document.createElement('span'); msg.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
-    var sw = document.createElement('a'); sw.href = 'index.html'; sw.textContent = 'Switch user'; sw.style.cssText = 'color:#9cc9ff;text-decoration:underline;flex:none';
-    sw.onclick = function () { try { sessionStorage.removeItem('todo_authed_' + U); } catch (e) {} };
-    var hide = document.createElement('button'); hide.type = 'button'; hide.textContent = '×'; hide.setAttribute('aria-label', 'Collapse sync bar');
-    hide.style.cssText = 'background:none;border:0;color:#fff;font-size:16px;line-height:1;cursor:pointer;flex:none;padding:0 2px';
-    var open = true;
-    hide.onclick = function () {
-      open = !open;
-      msg.style.display = sw.style.display = open ? '' : 'none';
-      hide.textContent = open ? '×' : '•••';
-      hide.setAttribute('aria-label', open ? 'Collapse sync bar' : 'Expand sync bar');
-    };
-    b.appendChild(who); b.appendChild(dot); b.appendChild(msg); b.appendChild(sw); b.appendChild(hide);
-    document.body.appendChild(b);
+    var header = document.querySelector('header');
     var colors = { ok: '#3ecf6e', syncing: '#f5b942', error: '#ef5b5b', local: '#8a8f98' };
-    function show() { dot.style.background = colors[GH.status.state] || '#8a8f98'; msg.textContent = GH.status.msg; b.title = GH.status.msg; }
+    var dot = document.createElement('span');
+    dot.className = 'sync-dot';
+    dot.setAttribute('role', 'status');
+    dot.setAttribute('aria-live', 'polite');
+    var err = document.createElement('div');
+    err.className = 'sync-error';
+    err.setAttribute('role', 'alert');
+    err.style.display = 'none';
+    if (header) {
+      header.appendChild(dot);
+      header.insertAdjacentElement('afterend', err);
+      var ver = header.querySelector('.version-label');
+      if (ver) {
+        var sw = document.createElement('a');
+        sw.href = 'index.html'; sw.className = 'switch-link'; sw.textContent = 'Switch user';
+        sw.onclick = function () { try { sessionStorage.removeItem('todo_authed_' + U); } catch (e) {} };
+        ver.appendChild(sw);
+      }
+    }
+    function show() {
+      var s = GH.status;
+      dot.dataset.state = s.state;
+      dot.style.background = colors[s.state] || '#8a8f98';
+      dot.title = (NAMES[U] || U) + ': ' + s.msg;
+      dot.setAttribute('aria-label', 'Sync status: ' + s.msg);
+      err.textContent = s.state === 'error' ? s.msg : '';
+      err.style.display = s.state === 'error' ? 'block' : 'none';
+    }
     window.addEventListener('todo-sync', show); show();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountBar); else mountBar();
