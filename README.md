@@ -5,9 +5,10 @@ Static site (GitHub Pages). Each person signs in with a 4-digit PIN and has thei
 - `index.html` - login (PIN) and "Connect to GitHub" setup
 - `app.html` / `app.js` / `styles.css` - the to-do app
 - `config.js` - users, data repo, branch (the only place to change these)
-- `gh-storage.js` - local-first storage with 3-way merge sync to GitHub
+- `gh-storage.js` - local-first storage with 3-way merge sync to GitHub, and optional passphrase encryption of the whole file (Settings > Security > Data Encryption)
 - `auth-gate.js` - sends you back to login unless a PIN was entered this session
 - `sw.js`, `manifest.webmanifest`, `icon.svg` - installable app and offline shell
 - `tests/merge.test.js` - run with `node tests/merge.test.js`
+- `tests/sync.test.html` - sync + encryption tests against a fake in-memory GitHub; open it from any local web server
 
 Setup on each device: open the login page, expand "Connect to GitHub", enter `ntltp-code/ntltp-private`, branch `main` and a fine-grained token limited to that repo (Contents: read and write).

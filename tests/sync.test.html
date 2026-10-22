@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>sync + encryption tests</title>
+<style>body{font:14px system-ui;margin:20px} .ok{color:#2e7d32} .bad{color:#c62828;font-weight:700}</style></head>
+<body>
+<!-- Open over http (e.g. a local server) and wait for "done". Uses a fake in-memory GitHub, never the real one. -->
+<h1>Sync + encryption tests</h1>
+<ol id="out"></ol>
+<script>
+  // ---------- fake GitHub contents API ----------
+  var files = {}, shaN = 0;
+  function b64e(s) { return btoa(unescape(encodeURIComponent(s))); }
+  function b64d(s) { return decodeURIComponent(escape(atob(s))); }
+  window.FAKE = { stores: {}, files: files, fetch: async function (url, opt) {
+    var path = decodeURIComponent(url.split('/contents/')[1].split('?')[0]);
+    var json = function (status, body) { return { ok: status < 300, status: status, json: async function () { return body; } }; };
+    if (!opt || !opt.method || opt.method === 'GET') {
+      return files[path] ? json(200, { content: b64e(files[path].text), sha: files[path].sha }) : json(404, {});
+    }
+    var body = JSON.parse(opt.body);
+    if (files[path] && body.sha !== files[path].sha) return json(409, {});
+    if (!files[path] && body.sha) return json(422, {});
+    files[path] = { text: b64d(body.content), sha: 's' + (++shaN) };
+    return json(200, { content: { sha: files[path].sha } });
+  } };
+  function remote() { return JSON.parse(files['data/t.json'].text); }
+
+  // ---------- helpers ----------
+  var out = document.getElementById('out'), failures = 0;
+  function check(cond, label) {
+    var li = document.createElement('li');
+    li.className = cond ? 'ok' : 'bad';
+    li.textContent = (cond ? 'PASS ' : 'FAIL ') + label;
+    out.appendChild(li);
+    if (!cond) failures++;
+  }
+  var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+  async function waitFor(fn, ms) {
+    var end = Date.now() + (ms || 8000);
+    while (Date.now() < end) { try { if (fn()) return true; } catch (e) {} await sleep(50); }
+    return false;
+  }
+  function device(dev) {
+    return new Promise(function (resolve) {
+      var f = document.createElement('iframe');
+      f.style.display = 'none';
+      f.src = 'sync-device.html?u=t&dev=' + dev + '&r=' + Math.random();
+      f.onload = function () { resolve(f.contentWindow); };
+      document.body.appendChild(f);
+    });
+  }
+  async function tasks(w) { var r = await w.storage.get('work_todos'); return r ? JSON.parse(r.value).map(function (t) { return t.text; }).sort() : []; }
+  async function addTask(w, text) {
+    var list = (await w.storage.get('work_todos')) ? JSON.parse((await w.storage.get('work_todos')).value) : [];
+    list.push({ id: text, text: text, updatedAt: Date.now() });
+    await w.storage.set('work_todos', JSON.stringify(list));
+  }
+  async function settle(w) { await sleep(150); await w.TodoGH.pushNow(); await sleep(150); }
+
+  (async function () {
+    // 1. plain sync still works
+    var A = await device('A');
+    await addTask(A, 'secret alpha');
+    await settle(A);
+    check(files['data/t.json'] && !remote().encrypted && files['data/t.json'].text.indexOf('secret alpha') >= 0, 'unencrypted list saves to GitHub as before');
+
+    // 2. turn encryption on
+    await A.TodoGH.encryption.enable('pass-one-xyz');
+    await settle(A);
+    check(A.TodoGH.encryption.state() === 'on', 'device A reports encryption on');
+    check(remote().encrypted === true && files['data/t.json'].text.indexOf('secret alpha') < 0, 'GitHub file is sealed and has no readable task text');
+    check(FAKE.stores.A.todo_cache_t.indexOf('secret alpha') < 0 && JSON.parse(FAKE.stores.A.todo_cache_t).blob, "device A's own copy is sealed too");
+
+    // 3. a second device must unlock
+    var B = await device('B');
+    check(await waitFor(function () { return B.TodoGH.encryption.state() === 'locked'; }), 'new device B asks for the passphrase');
+    check(!(await B.TodoGH.encryption.unlock('wrong passphrase')), 'B rejects a wrong passphrase');
+    check(await B.TodoGH.encryption.unlock('pass-one-xyz'), 'B accepts the right passphrase');
+    check(JSON.stringify(await tasks(B)) === JSON.stringify(['secret alpha']), 'B can read the list after unlocking');
+
+    // 4. both devices edit; task-by-task merge still works while encrypted
+    await addTask(A, 'from A');
+    await addTask(B, 'from B');
+    await settle(B);
+    await settle(A);
+    await settle(B);
+    check(JSON.stringify(await tasks(A)) === JSON.stringify(['from A', 'from B', 'secret alpha']), 'A has both devices\' new tasks');
+    check(JSON.stringify(await tasks(B)) === JSON.stringify(['from A', 'from B', 'secret alpha']), 'B has both devices\' new tasks');
+    check(remote().encrypted === true, 'GitHub file is still sealed after merging');
+
+    // 5. reopening A asks again and keeps the data
+    var A2 = await device('A');
+    check(await waitFor(function () { return A2.TodoGH.encryption.state() === 'locked'; }), 'reopening A asks for the passphrase');
+    check(await A2.TodoGH.encryption.unlock('pass-one-xyz'), 'A unlocks again');
+    check((await tasks(A2)).length === 3, 'A still has all 3 tasks after reopening');
+
+    // 6. change the passphrase on A; B must be asked for the new one and must not overwrite anything
+    await A2.TodoGH.encryption.enable('pass-two-abc');
+    await settle(A2);
+    var shaBefore = files['data/t.json'].sha;
+    await B.TodoGH.pushNow();
+    check(await waitFor(function () { return B.TodoGH.encryption.state() === 'locked' && B.TodoGH.encryption.lockReason() === 'changed'; }), 'B notices the passphrase changed and asks for it');
+    check(files['data/t.json'].sha === shaBefore, 'B did not write while locked');
+    check(!(await B.TodoGH.encryption.unlock('pass-one-xyz')), 'B rejects the old passphrase');
+    check(await B.TodoGH.encryption.unlock('pass-two-abc'), 'B accepts the new passphrase');
+    await addTask(B, 'after change');
+    await settle(B);
+    await settle(A2);
+    check((await tasks(A2)).indexOf('after change') >= 0, 'syncing works again after the passphrase change');
+
+    // 7. turn encryption off on A; B follows
+    await A2.TodoGH.encryption.disable();
+    await settle(A2);
+    check(!remote().encrypted && files['data/t.json'].text.indexOf('secret alpha') >= 0, 'turning off stores the GitHub file readable again');
+    await settle(B);
+    check(B.TodoGH.encryption.state() === 'off', 'B follows encryption being turned off');
+    await sleep(200);
+    check(FAKE.stores.B.todo_cache_t.indexOf('secret alpha') >= 0, "B's own copy is readable again");
+    check((await tasks(B)).length === 4, 'B still has all 4 tasks');
+
+    var done = document.createElement('p');
+    done.id = 'done';
+    done.className = failures ? 'bad' : 'ok';
+    done.textContent = 'done: ' + (failures ? failures + ' failed' : 'all passed');
+    document.body.appendChild(done);
+  })().catch(function (e) { check(false, 'crashed: ' + e.message); var d = document.createElement('p'); d.id = 'done'; d.textContent = 'done: crashed'; document.body.appendChild(d); });
+</script>
+</body>
+</html>

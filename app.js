@@ -19,6 +19,10 @@
   const addRow = document.getElementById('addRow');
   const newTaskBtn = document.getElementById('newTaskBtn');
   const newTaskOverlay = document.getElementById('newTaskOverlay');
+  const taskEditOverlay = document.getElementById('taskEditOverlay');
+  const taskEditBody = document.getElementById('taskEditBody');
+  const taskEditTitle = document.getElementById('taskEditTitle');
+  let lastEditedId = null;
   const sortSelect = document.getElementById('sortSelect');
   const repeatSelect = document.getElementById('repeatSelect');
   const searchInput = document.getElementById('searchInput');
@@ -161,6 +165,8 @@
           // Sleep timer has run out - wake it up, regardless of due date.
           t.pending = false;
           t.snoozeUntil = null;
+          t.wokeUp = true;
+          t.wokeAt = todayStr;
           changed = true;
         } else if (!stillSleeping && t.dueDate && t.dueDate <= todayStr) {
           // No active sleep timer - fall back to the normal due-date wake check.
@@ -367,6 +373,7 @@
     copy.done = false;
     copy.pending = false;
     copy.snoozeUntil = null;
+    copy.wokeUp = false;
     copy.completedAt = null;
     copy.createdAt = Date.now();
     copy.dueDate = next;
@@ -454,6 +461,7 @@
       const ar = await storageGet(ARCHIVE_KEY);
       if (ar) { const a = JSON.parse(ar.value); if (Array.isArray(a)) archivedTasks = a; }
       populateCategorySelect(); renderCategoryList(); populateAssigneeChecklist(); renderAssigneeList(); populateAssignedBySelect(); renderAssignedByList();
+      updateEncryptionUI();
       render();
     } catch (e) { /* keep what is on screen */ }
   });
@@ -547,11 +555,13 @@
     populateAssignedBySelect();
     renderAssignedByList();
     updateSecurityUI();
-    if (passwordHash) {
+    updateEncryptionUI();
+    // the passphrase already guards an encrypted list, so don't ask for the password as well
+    if (passwordHash && !encryptionOn()) {
       showLock();
     }
     render();
-    if (!passwordHash) {
+    if (!passwordHash || encryptionOn()) {
       maybeShowDueSummary();
     }
   }
@@ -624,6 +634,9 @@
 
   function render() {
     listEl.innerHTML = '';
+    const prevEditScroll = taskEditBody.scrollTop;
+    taskEditBody.innerHTML = '';
+    let editingItem = null;
 
     const priorityOrder = { high: 0, medium: 1, low: 2 };
     const sortComparators = {
@@ -747,6 +760,19 @@
           sleepTag.textContent = item.snoozeUntil ? ('\u263E Asleep til ' + toUKDateShort(item.snoozeUntil)) : '\u23F8 Pending';
           categoryCell.appendChild(sleepTag);
         }
+        if (!item.done && !item.pending && item.wokeUp && page === 'active') {
+          const wokeTag = document.createElement('span');
+          wokeTag.className = 'category-tag woke-tag';
+          wokeTag.textContent = '⏰ Woke up' + (item.wokeAt ? ' ' + toUKDateShort(item.wokeAt) : '');
+          wokeTag.title = 'This task has woken up from sleep. Click to dismiss this marker.';
+          wokeTag.addEventListener('click', e => {
+            e.stopPropagation();
+            item.wokeUp = false;
+            save();
+            render();
+          });
+          categoryCell.appendChild(wokeTag);
+        }
 
         const itemAssignees = item.assignees || (item.assignedTo ? [item.assignedTo] : []);
         const assigneeCell = document.createElement('div');
@@ -825,6 +851,7 @@
           editName.addEventListener('input', () => {
             item.text = editName.value;
             taskText.textContent = editName.value;
+            taskEditTitle.textContent = 'Editing: ' + editName.value;
             debouncedSave();
           });
 
@@ -1023,7 +1050,7 @@
               editInput.addEventListener('blur', commit);
               editInput.addEventListener('keydown', e => {
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); editInput.blur(); }
-                if (e.key === 'Escape') { editInput.value = sub.text; editInput.blur(); }
+                if (e.key === 'Escape') { e.stopPropagation(); editInput.value = sub.text; editInput.blur(); }
               });
             });
 
@@ -1226,6 +1253,7 @@
             pendingToggleBtn.textContent = item.pending ? 'Move to Active' : 'Move to Pending';
             pendingToggleBtn.addEventListener('click', () => {
               item.pending = !item.pending;
+              item.wokeUp = false;
               if (!item.pending) item.snoozeUntil = null;
               save();
               toggleExpanded(item.id);
@@ -1252,6 +1280,7 @@
               sleep1WeekBtn.textContent = 'Sleep 1 Week';
               sleep1WeekBtn.addEventListener('click', () => {
                 item.pending = true;
+                item.wokeUp = false;
                 item.snoozeUntil = addDaysToToday(7);
                 save();
                 toggleExpanded(item.id);
@@ -1265,6 +1294,7 @@
               sleepUntilInput.addEventListener('change', () => {
                 if (!sleepUntilInput.value) return;
                 item.pending = true;
+                item.wokeUp = false;
                 item.snoozeUntil = sleepUntilInput.value;
                 save();
                 toggleExpanded(item.id);
@@ -1280,14 +1310,16 @@
           if (markCompleteBtn) panelFooter.appendChild(markCompleteBtn);
           if (snoozeInfo) panelFooter.appendChild(snoozeInfo);
           panelFooter.appendChild(saveTaskBtn);
+          panelFooter.appendChild(closeTaskBtn);
 
           panel.appendChild(editFields);
           panel.appendChild(subtaskListTitle);
           panel.appendChild(subtaskList);
           panel.appendChild(addSubtaskRow);
           panel.appendChild(panelFooter);
-          panel.appendChild(closeTaskBtn);
-          li.appendChild(panel);
+          taskEditBody.appendChild(panel);
+          editingItem = item;
+          li.classList.add('editing-row');
         }
 
         listEl.appendChild(li);
@@ -1304,6 +1336,18 @@
         : completed + (completed === 1 ? ' item completed' : ' items completed');
 
     newTaskOverlay.classList.toggle('open', page === 'active' && addFormOpen);
+    if (editingItem) {
+      taskEditTitle.textContent = 'Editing: ' + editingItem.text;
+      taskEditOverlay.classList.add('open');
+      if (lastEditedId === editingItem.id) taskEditBody.scrollTop = prevEditScroll;
+      lastEditedId = editingItem.id;
+    } else {
+      // the open task left this view (completed, deleted, or filtered out): forget it
+      // so it doesn't pop up again later on another tab
+      expandedIds.clear();
+      taskEditOverlay.classList.remove('open');
+      lastEditedId = null;
+    }
     newTaskBtn.style.display = page === 'active' ? 'block' : 'none';
     document.querySelector('.quick-add').style.display = page === 'active' ? 'flex' : 'none';
     clearBtn.style.display = page === 'done' && completed > 0 ? 'inline' : 'none';
@@ -1428,14 +1472,25 @@
     save();
   }
 
+  // only one task is open (in the pop-up) at a time
   function toggleExpanded(id) {
     if (expandedIds.has(id)) {
       expandedIds.delete(id);
     } else {
+      expandedIds.clear();
       expandedIds.add(id);
     }
     render();
   }
+
+  function closeTaskEditWindow() {
+    expandedIds.clear();
+    render();
+  }
+  document.getElementById('taskEditClose').addEventListener('click', closeTaskEditWindow);
+  taskEditOverlay.addEventListener('click', e => {
+    if (e.target === taskEditOverlay) closeTaskEditWindow();
+  });
 
   function toggle(id) {
     const item = todos.find(t => t.id === id);
@@ -2111,7 +2166,8 @@
     ['newTaskOverlay', 'newTaskWindowClose'],
     ['settingsOverlay', 'closeSettingsBtn'],
     ['dueSummaryOverlay', 'closeDueSummaryBtn'],
-    ['reportOverlay', 'reportClose']
+    ['reportOverlay', 'reportClose'],
+    ['taskEditOverlay', 'taskEditClose']
   ];
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
@@ -2542,6 +2598,7 @@
     renderCategoryList();
     renderAssigneeList();
     renderAssignedByList();
+    updateEncryptionUI();
     settingsOverlay.classList.add('open');
   }
 
@@ -2615,6 +2672,7 @@
   }
 
   function showLock() {
+    setLockMode(false);
     unlockInput.value = '';
     unlockError.textContent = '';
     lockOverlay.classList.add('open');
@@ -2625,7 +2683,165 @@
     lockOverlay.classList.remove('open');
   }
 
+  // ---------- data encryption (the work is done in gh-storage.js; this is the UI) ----------
+  const ENC = window.TodoGH && window.TodoGH.encryption;
+  const lockTitleEl = document.getElementById('lockTitle');
+  const lockHintEl = document.getElementById('lockHint');
+  let encUnlocking = false;   // the lock screen is asking for the passphrase, not the password
+
+  function encryptionOn() {
+    return !!ENC && ENC.state() === 'on';
+  }
+
+  function setLockMode(isEncryption, reason) {
+    lockTitleEl.textContent = isEncryption ? 'Encrypted' : 'Locked';
+    lockHintEl.textContent = !isEncryption
+      ? 'Enter your password to view your to-do list.'
+      : reason === 'changed'
+        ? 'The passphrase for this list was changed on another device. Enter the new passphrase to keep syncing.'
+        : 'Enter your passphrase to decrypt and open your to-do list.';
+    unlockInput.placeholder = isEncryption ? 'Passphrase' : 'Password';
+  }
+
+  function promptForPassphrase() {
+    if (encUnlocking) return;
+    encUnlocking = true;
+    setLockMode(true, ENC.lockReason());
+    unlockInput.value = '';
+    unlockError.textContent = ENC.available ? '' : 'Encryption is not available in this browser, so this list cannot be opened here.';
+    lockOverlay.classList.add('open');
+    closeSettings();
+    setTimeout(() => unlockInput.focus(), 50);
+  }
+
+  async function attemptEncUnlock() {
+    const pass = unlockInput.value;
+    if (!pass || !ENC.available) return;
+    unlockBtn.disabled = true;
+    unlockError.textContent = 'Unlocking…';
+    try {
+      if (await ENC.unlock(pass)) {
+        encUnlocking = false;
+        unlockInput.value = '';
+        unlockError.textContent = '';
+        hideLock();
+        setLockMode(false);
+        updateEncryptionUI();
+      } else {
+        unlockError.textContent = 'Incorrect passphrase. Try again.';
+        unlockInput.value = '';
+        unlockInput.focus();
+      }
+    } finally {
+      unlockBtn.disabled = false;
+    }
+  }
+
+  if (ENC) {
+    window.addEventListener('todo-enc-locked', promptForPassphrase);
+    if (ENC.state() === 'locked') promptForPassphrase();
+  }
+
+  const encStatus = document.getElementById('encStatus');
+  const encPassInput = document.getElementById('encPassInput');
+  const encPassConfirm = document.getElementById('encPassConfirm');
+  const encSetBtn = document.getElementById('encSetBtn');
+  const encOffBtn = document.getElementById('encOffBtn');
+  const encMsg = document.getElementById('encMsg');
+
+  function showEncMsg(text, type) {
+    encMsg.textContent = text;
+    encMsg.className = 'import-status' + (type ? ' ' + type : '');
+  }
+
+  function updateEncryptionUI() {
+    if (!ENC || !ENC.available) {
+      encStatus.textContent = 'Encryption is not available in this browser';
+      encStatus.className = 'password-status';
+      encSetBtn.disabled = true;
+      encPassInput.disabled = true;
+      encPassConfirm.disabled = true;
+      return;
+    }
+    if (encryptionOn()) {
+      encStatus.textContent = 'Data encryption is ON';
+      encStatus.className = 'password-status enabled';
+      encPassInput.placeholder = 'New passphrase (replaces current)';
+      encSetBtn.textContent = 'Change Passphrase';
+      encOffBtn.style.display = 'block';
+    } else {
+      encStatus.textContent = 'Data encryption is OFF';
+      encStatus.className = 'password-status';
+      encPassInput.placeholder = 'New passphrase (at least 8 characters)';
+      encSetBtn.textContent = 'Turn On Encryption';
+      encOffBtn.style.display = 'none';
+    }
+  }
+
+  async function turnOnOrChangeEncryption() {
+    if (!ENC || !ENC.available) return;
+    const pass = encPassInput.value;
+    if (pass.length < 8) {
+      showEncMsg('The passphrase must be at least 8 characters. A few random words works well.', 'error');
+      return;
+    }
+    if (pass !== encPassConfirm.value) {
+      showEncMsg('The two passphrases do not match.', 'error');
+      return;
+    }
+    if (ENC.state() === 'locked') {
+      showEncMsg('Unlock the list with its current passphrase first.', 'error');
+      return;
+    }
+    const changing = encryptionOn();
+    const ok = await askConfirm(
+      (changing ? 'Your list will be re-encrypted with the new passphrase.' : 'Your list will be encrypted with this passphrase, on this device and on GitHub.') +
+      ' Every device will need it to open the list. If you forget it, your list CANNOT be recovered, not by you and not by anyone else. Make sure you have a CSV export saved as a backup.',
+      changing ? 'Change passphrase' : 'Encrypt'
+    );
+    if (!ok) return;
+    encSetBtn.disabled = true;
+    showEncMsg('Encrypting… this takes a second or two.', '');
+    try {
+      await ENC.enable(pass);
+      encPassInput.value = '';
+      encPassConfirm.value = '';
+      updateEncryptionUI();
+      const onGitHub = !!TodoGH.cfg().token;
+      showEncMsg((changing ? 'Passphrase changed.' : 'Encryption is on.') + ' Your list is stored encrypted on this device' +
+        (onGitHub ? ' and is saved encrypted to GitHub. Other devices will ask for the passphrase when they next sync.' : '.'), 'success');
+    } catch (e) {
+      console.error('Turning on encryption failed', e);
+      showEncMsg('Something went wrong turning on encryption. Please reload and try again.', 'error');
+    } finally {
+      encSetBtn.disabled = false;
+    }
+  }
+
+  async function turnOffEncryption() {
+    const ok = await askConfirm('Turn off encryption? Your list will be stored as readable (unencrypted) text again, on this device and on GitHub.', 'Turn off');
+    if (!ok) return;
+    encOffBtn.disabled = true;
+    try {
+      await ENC.disable();
+      updateEncryptionUI();
+      showEncMsg('Encryption is off. Your list is stored unencrypted again.', 'success');
+    } catch (e) {
+      console.error('Turning off encryption failed', e);
+      showEncMsg('Something went wrong turning off encryption. Please reload and check your list.', 'error');
+    } finally {
+      encOffBtn.disabled = false;
+    }
+  }
+
+  encSetBtn.addEventListener('click', turnOnOrChangeEncryption);
+  encOffBtn.addEventListener('click', turnOffEncryption);
+
   async function attemptUnlock() {
+    if (encUnlocking) {
+      await attemptEncUnlock();
+      return;
+    }
     const attempt = await sha256(unlockInput.value);
     if (attempt === passwordHash) {
       hideLock();
