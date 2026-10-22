@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>sync test device</title></head>
+<body>
+<!-- One simulated device for sync.test.html: its own in-memory localStorage, and the parent's fake GitHub. -->
+<script>
+  var dev = new URLSearchParams(location.search).get('dev');
+  var mem = parent.FAKE.stores[dev] = parent.FAKE.stores[dev] || {};
+  Object.defineProperty(window, 'localStorage', { configurable: true, value: {
+    getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+    setItem: function (k, v) { mem[k] = String(v); },
+    removeItem: function (k) { delete mem[k]; }
+  } });
+  window.fetch = parent.FAKE.fetch;
+  window.TODO_CONFIG = { dataRepo: 'test/data', branch: 'main', dir: 'data' };
+  mem.todo_gh_cfg = JSON.stringify({ repo: 'test/data', branch: 'main', dir: 'data', token: 'fake' });
+</script>
+<script src="../gh-storage.js"></script>
+</body>
+</html>
