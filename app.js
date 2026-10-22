@@ -1348,7 +1348,6 @@
       taskEditOverlay.classList.remove('open');
       lastEditedId = null;
     }
-    newTaskBtn.style.display = page === 'active' ? 'block' : 'none';
     document.querySelector('.quick-add').style.display = page === 'active' ? 'flex' : 'none';
     clearBtn.style.display = page === 'done' && completed > 0 ? 'inline' : 'none';
     exportBtn.style.display = page === 'done' && completed > 0 ? 'inline' : 'none';
@@ -2109,13 +2108,6 @@
   quickAdd.addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); quickAddTask(); }
   });
-  document.getElementById('quickAddMore').addEventListener('click', () => {
-    const text = quickAdd.value;
-    quickAdd.value = '';
-    newTaskBtn.click();
-    input.value = text;
-    input.focus();
-  });
 
   // ---------- drag to reorder (within a group) ----------
   let dragId = null;
@@ -2203,7 +2195,12 @@
     if (e.key === 'Enter') addItem();
   });
 
+  // opens the New Task window; anything already typed in the quick-add box carries over
   newTaskBtn.addEventListener('click', () => {
+    if (quickAdd.value.trim()) {
+      input.value = quickAdd.value;
+      quickAdd.value = '';
+    }
     addFormOpen = true;
     render();
     input.focus();

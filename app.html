@@ -22,6 +22,8 @@
     <header>
       <button id="lockBtn" class="lock-btn" aria-label="Lock" type="button" style="display:none;">&#128274;</button>
       <button id="settingsBtn" class="settings-btn" aria-label="Manage categories" type="button">&#9881;</button>
+      <input type="search" id="searchInput" class="header-search" placeholder="Search..." autocomplete="off" aria-label="Search tasks, categories, people, notes">
+
       <h1 class="title-row">
         <svg class="title-logo" viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <rect x="10" y="25" width="140" height="180" rx="18" fill="#0B4C82" stroke="#8EC1EE" stroke-width="6"/>
@@ -36,7 +38,7 @@
         <span class="app-label" id="appLabelHeader">Work</span>
       </h1>
       <p id="dateLabel">today</p>
-      <p class="version-label">v11.0</p>
+      <p class="version-label">v11.1</p>
     </header>
 
     <p class="due-today-top" id="dueTodayTop">
@@ -53,12 +55,7 @@
 
     <div class="quick-add">
       <input type="text" id="quickAdd" placeholder="Add a task and press Enter..." maxlength="280" autocomplete="off" aria-label="Quick add a task">
-      <button type="button" id="quickAddMore">Details</button>
-    </div>
-
-    <div class="search-row">
-      <label for="searchInput" class="sort-label">Search</label>
-      <input type="search" id="searchInput" placeholder="Search tasks, categories, people, notes..." autocomplete="off">
+      <button class="new-task-btn" id="newTaskBtn" type="button">+ New Task</button>
     </div>
 
     <div class="sort-row">
@@ -76,8 +73,6 @@
       <span id="filterIndicatorText"></span>
       <button id="clearFilterBtn" type="button">Show All</button>
     </div>
-
-    <button class="new-task-btn" id="newTaskBtn" type="button">+ New Task</button>
 
     <div class="new-task-overlay" id="newTaskOverlay" role="dialog" aria-modal="true" aria-label="New task">
       <div class="new-task-window">
@@ -402,6 +397,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v11.1</span> The search box is now a small box under the settings icon. The "Details" button is gone; a "+ New Task" button beside the quick-add box opens the New Task window (anything already typed in the quick-add box carries over). Large lists now save to GitHub reliably when you switch away from the tab.</li>
           <li><span class="changelog-version">v11.0</span> Added real data encryption (Settings &rarr; Security &rarr; Data Encryption). Choose a passphrase and your whole list (tasks, archive, categories, assigned-to / assigned-by lists, reminder email and settings) is stored encrypted (AES-256-GCM, key derived with PBKDF2), both on this device and in your file on GitHub. Syncing between devices still merges changes task by task. You enter the passphrase when you open the list on each device. You can change the passphrase or turn encryption off from the same place, and other devices follow the change when they next sync. There is no way to recover your list if the passphrase is forgotten, and CSV exports / the Summary Report are not encrypted. If the list can't be decrypted, nothing is overwritten.</li>
           <li><span class="changelog-version">v10.3</span> In the task pop-up, the buttons at the bottom (Delete task, Move to Pending, Sleep 1 Week, sleep-until date, Save task, Close) are laid out in an even grid of three per row (two on phones), stretched to fill the width of the window.</li>
           <li><span class="changelog-version">v10.2</span> The task pop-up window is wider (up to 880px) with a larger title bar.</li>
