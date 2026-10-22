@@ -441,13 +441,6 @@
     if (header) {
       header.appendChild(dot);
       header.insertAdjacentElement('afterend', err);
-      var ver = header.querySelector('.version-label');
-      if (ver) {
-        var sw = document.createElement('a');
-        sw.href = 'index.html'; sw.className = 'switch-link'; sw.textContent = 'Switch user';
-        sw.onclick = function () { try { sessionStorage.removeItem('todo_authed_' + U); } catch (e) {} };
-        ver.appendChild(sw);
-      }
     }
     function show() {
       var s = GH.status;
