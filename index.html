@@ -4,29 +4,34 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Welcome - To-do</title>
-<meta name="theme-color" content="#2F6FE4">
+<meta name="theme-color" content="#C96442">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Source+Serif+4:wght@600&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
 <style>
-:root{--bg:#f4f5f8;--card:#fff;--ink:#1b1d24;--mute:#6b7080;--line:#dfe2ea;--acc:#3b6df0;--ok:#2a9d5c;--bad:#d64545}
-@media (prefers-color-scheme:dark){:root{--bg:#14161c;--card:#1e212a;--ink:#eef0f6;--mute:#9aa0b2;--line:#2e3340;--acc:#6b93ff;--ok:#43c47a;--bad:#ff6b6b}}
+/* same warm palette as the app (Warm / Warm Dark) */
+:root{--bg:#EFEDE4;--card:#FAF9F5;--ink:#1F1E1D;--mute:#6F6B63;--line:#E3DFD2;--acc:#C96442;--acc-btn:#A94F2E;--on-acc:#fff;--ok:#3F7A44;--bad:#B3261E}
+@media (prefers-color-scheme:dark){:root{--bg:#191918;--card:#262624;--ink:#ECEAE2;--mute:#A39E92;--line:#3A3936;--acc:#D97757;--acc-btn:#D97757;--on-acc:#1F1E1D;--ok:#8FB58F;--bad:#FF6B6B}}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;display:flex;flex-direction:column;align-items:center;padding:48px 16px}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font:16px/1.45 'Nunito',system-ui,-apple-system,Segoe UI,sans-serif;display:flex;flex-direction:column;align-items:center;padding:48px 16px}
 main{width:100%;max-width:520px}
-h1{font-size:2rem;margin:0 0 6px;text-align:center}
+h1{font-family:'Source Serif 4',Georgia,serif;font-weight:600;font-size:2rem;margin:0 0 6px;text-align:center}
+.sync-line{margin:22px 0 0;text-align:center;font-size:.9rem;color:var(--mute)}
+.sync-line button{background:none;border:0;padding:0;color:var(--acc);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
 .sub{text-align:center;color:var(--mute);margin:0 0 28px}
 .users{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .user{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px 12px;cursor:pointer;color:var(--ink);font:inherit;text-align:center}
 .user:hover,.user:focus-visible{border-color:var(--acc);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 25%,transparent)}
-.av{width:64px;height:64px;border-radius:50%;background:var(--acc);color:#fff;font-size:1.5rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.av{width:64px;height:64px;border-radius:50%;background:var(--acc-btn);color:var(--on-acc);font-size:1.5rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
 .user b{display:block;font-size:1.2rem}
 .user small{color:var(--mute)}
 details{margin-top:28px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
 summary{cursor:pointer;font-weight:600}
 label{display:block;margin:12px 0 4px;font-size:.85rem;color:var(--mute)}
 input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
-button.pri{margin-top:14px;padding:10px 16px;border:0;border-radius:8px;background:var(--acc);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+button.pri{margin-top:14px;padding:10px 16px;border:0;border-radius:8px;background:var(--acc-btn);color:var(--on-acc);font:inherit;font-weight:600;cursor:pointer}
 button.sec{padding:10px 16px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink);font:inherit;cursor:pointer}
 .note{font-size:.82rem;color:var(--mute);margin:10px 0 0}
 #msg{margin-top:10px;font-size:.9rem;min-height:1.3em}
@@ -45,8 +50,10 @@ dialog input{text-align:center;letter-spacing:.4em;font-size:1.3rem}
   <p class="sub">Whose list would you like to open?</p>
   <div class="users" id="users"></div>
 
-  <details id="setup">
-    <summary>Connect to GitHub (saves lists across devices)</summary>
+  <p class="sync-line" id="syncLine"></p>
+
+  <details id="setup" hidden>
+    <summary>Sync with GitHub (saves lists across devices)</summary>
     <label for="repo">Repository (owner/name)</label>
     <input id="repo" autocomplete="off" spellcheck="false">
     <label for="branch">Branch</label>
@@ -55,7 +62,7 @@ dialog input{text-align:center;letter-spacing:.4em;font-size:1.3rem}
     <input id="token" type="password" autocomplete="off" placeholder="github_pat_...">
     <button class="pri" id="saveCfg" type="button">Save and test</button>
     <div id="msg"></div>
-    <p class="note">Each list is saved as <code>data/oj.json</code> or <code>data/nick.json</code> in that repository. Use a fine-grained token limited to that one repository with Contents: read and write. If the repository is public, anyone can read those files, so a private repository is better for work tasks.</p>
+    <p class="note">Each list is saved as <code>data/oj.json</code> or <code>data/nick.json</code> in that repository. Use a fine-grained token limited to that one repository with Contents: read and write, and give it an expiry date (a year is sensible), so a lost device can't reach your lists forever. If the repository is public, anyone can read those files, so a private repository is better for work tasks.</p>
   </details>
 </main>
 
@@ -147,7 +154,18 @@ dialog input{text-align:center;letter-spacing:.4em;font-size:1.3rem}
 
   var c = TodoGH.cfg();
   $('repo').value = c.repo; $('branch').value = c.branch; $('token').value = c.token;
-  if (!c.token) $('setup').open = true;
+  // GitHub setup stays out of the way behind one link; most people never need to see it
+  function showSyncLine() {
+    var connected = !!TodoGH.cfg().token;
+    var line = $('syncLine');
+    line.textContent = connected ? 'Syncing with GitHub. ' : 'This device isn\'t syncing yet. ';
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = connected ? 'Sync settings' : 'Set up sync';
+    b.onclick = function () { var s = $('setup'); s.hidden = false; s.open = true; line.hidden = true; $(connected ? 'token' : 'repo').focus(); };
+    line.appendChild(b);
+  }
+  showSyncLine();
   $('saveCfg').onclick = async function () {
     var cfg = { repo: $('repo').value.trim(), branch: $('branch').value.trim() || TODO_CONFIG.branch, dir: TODO_CONFIG.dir, token: $('token').value.trim() };
     try { localStorage.setItem('todo_gh_cfg', JSON.stringify(cfg)); } catch (e) {}

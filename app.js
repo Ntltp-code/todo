@@ -13,6 +13,7 @@
   const clearBtn = document.getElementById('clearBtn');
   const exportBtn = document.getElementById('exportBtn');
   const dateLabel = document.getElementById('dateLabel');
+  const tabToday = document.getElementById('tabToday');
   const tabActive = document.getElementById('tabActive');
   const tabPending = document.getElementById('tabPending');
   const tabDone = document.getElementById('tabDone');
@@ -26,6 +27,9 @@
   let lastEditedId = null;
   const sortSelect = document.getElementById('sortSelect');
   const repeatSelect = document.getElementById('repeatSelect');
+  const waitingOnInput = document.getElementById('waitingOnInput');
+  let selectMode = false;
+  const selectedIds = new Set();
   const searchInput = document.getElementById('searchInput');
   let searchTerm = '';
   const cancelAddBtn = document.getElementById('cancelAddBtn');
@@ -97,28 +101,49 @@
 
   function formatDate(timestamp) {
     if (!timestamp) return '';
-    const d = new Date(timestamp);
+    // "YYYY-MM-DD" strings are read as local dates, not UTC midnight
+    const d = typeof timestamp === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(timestamp) ? new Date(timestamp + 'T00:00:00') : new Date(timestamp);
     if (isNaN(d.getTime())) return '';
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    // one style everywhere: "22 Oct", with the year only when it isn't this year
+    const opts = { day: 'numeric', month: 'short' };
+    if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
+    return d.toLocaleDateString('en-GB', opts);
+  }
+
+  // due dates in words where that reads better: Today, Tomorrow, Overdue 3 days, else "22 Oct"
+  function formatDue(dueDate) {
+    const iso = toISODate(dueDate);
+    if (!iso) return '';
+    const today = todayDateString();
+    if (iso === today) return 'Today';
+    if (iso === addDaysToToday(1)) return 'Tomorrow';
+    if (iso < today) {
+      const days = Math.round((new Date(today + 'T00:00:00') - new Date(iso + 'T00:00:00')) / 86400000);
+      return 'Overdue ' + days + (days === 1 ? ' day' : ' days');
+    }
+    return formatDate(iso);
+  }
+
+  const STALE_DAYS = 14;
+  function isStale(t) {
+    return !t.done && !t.pending && Date.now() - (t.updatedAt || t.createdAt || 0) > STALE_DAYS * 86400000;
+  }
+
+  // the Today tab: overdue, due today, or starred
+  function isTodayTask(t) {
+    return !t.done && (!!t.starred || t.dueDate === todayDateString() || isPastDue(t.dueDate));
   }
 
   function formatDateDDMM(timestamp) {
-    if (!timestamp) return '';
-    const d = new Date(timestamp);
-    if (isNaN(d.getTime())) return '';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    return day + '/' + month;
+    return formatDate(timestamp);
   }
 
   function formatFooterTimestamp(timestamp) {
     if (!timestamp) return 'never';
     const d = new Date(timestamp);
     if (isNaN(d.getTime())) return 'never';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-    return day + '/' + month + ' ' + time;
+    const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    return formatDate(timestamp) + ' ' + time;
   }
 
   function updateFooterStatus() {
@@ -142,9 +167,7 @@
 
   function toUKDateShort(value) {
     const iso = toISODate(value);
-    if (!iso) return '';
-    const [yyyy, mm, dd] = iso.split('-');
-    return dd + '-' + mm + '-' + yyyy.slice(2);
+    return iso ? formatDate(iso) : '';
   }
 
   function isPastDue(dueDate) {
@@ -249,7 +272,8 @@
     }
   }
 
-  const VALID_THEMES = ['auto', 'warm', 'warmdark', 'light', 'dark', 'colourful', 'notebook', 'forest', 'ocean', 'sunset', 'slate', 'bw', 'wb', 'terminal'];
+  // trimmed to six well-tested themes; anyone on a removed one falls back to 'auto'
+  const VALID_THEMES = ['auto', 'warm', 'warmdark', 'light', 'dark', 'bw'];
 
   let themeSetting = 'auto';
   const darkQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
@@ -380,7 +404,7 @@
     copy.dueDate = next;
     copy.subtasks = (item.subtasks || []).filter(x => x.type !== 'note').map(x => Object.assign({}, x, { id: uid(), done: false }));
     todos.push(copy);
-    showToast('Repeating task: next one due ' + formatDate(next) + '.');
+    return next;
   }
 
   const ARCHIVE_KEY = STORAGE_PREFIX + 'archive';
@@ -561,6 +585,8 @@
     if (passwordHash && !encryptionOn()) {
       showLock();
     }
+    // open on Today when there's something on it, so the first screen is "what to do now"
+    if (todos.some(isTodayTask)) setPage('today');
     render();
     if (!passwordHash || encryptionOn()) {
       maybeShowDueSummary();
@@ -648,7 +674,17 @@
     return null;
   }
 
+  // suggestions for the "Waiting on" fields: everyone in the Assigned To / By lists
+  function refreshPeopleList() {
+    const dl = document.getElementById('peopleList');
+    const people = Array.from(new Set(assignees.concat(assignedByOptions))).sort();
+    if (dl.dataset.people === people.join('|')) return;
+    dl.dataset.people = people.join('|');
+    dl.innerHTML = people.map(p => '<option value="' + escapeHtml(p) + '"></option>').join('');
+  }
+
   function render() {
+    refreshPeopleList();
     listEl.innerHTML = '';
     const prevEditScroll = taskEditBody.scrollTop;
     taskEditBody.innerHTML = '';
@@ -690,13 +726,16 @@
         // task any less overdue, so it shouldn't be hidden from this view.
         if (page === 'active' && filterMode === 'dueToday') return !t.done && t.dueDate === todayStr;
         if (page === 'active' && filterMode === 'overdue') return !t.done && isPastDue(t.dueDate);
+        if (page === 'active' && filterMode === 'waiting') return !t.done && !!t.waitingOn;
+        if (page === 'active' && filterMode === 'stale') return isStale(t);
+        if (page === 'today') return isTodayTask(t);
         if (page === 'done') return t.done;
         if (page === 'pending') return !t.done && t.pending;
         return !t.done && !t.pending;
       })
       .filter(t => {
         if (!searchTerm) return true;
-        const hay = [t.text, t.category, (t.assignees || []).join(' '), t.assignedTo, t.assignedBy,
+        const hay = [t.text, t.category, (t.assignees || []).join(' '), t.assignedTo, t.assignedBy, t.waitingOn,
           (t.subtasks || []).map(x => x.text).join(' ')].join(' ').toLowerCase();
         return searchTerm.split(/\s+/).every(w => hay.includes(w));
       })
@@ -706,7 +745,8 @@
     const filterIndicatorText = document.getElementById('filterIndicatorText');
     if (page === 'active' && filterMode) {
       filterIndicator.style.display = 'flex';
-      filterIndicatorText.textContent = 'Showing: ' + (filterMode === 'dueToday' ? 'Due Today' : 'Overdue') + ' (' + visible.length + ')';
+      const filterNames = { dueToday: 'Due today', overdue: 'Overdue', waiting: 'Waiting on someone', stale: 'Not touched in ' + STALE_DAYS + '+ days' };
+      filterIndicatorText.textContent = 'Showing: ' + filterNames[filterMode] + ' (' + visible.length + ')';
     } else {
       filterIndicator.style.display = 'none';
     }
@@ -715,6 +755,8 @@
     document.getElementById('overdueStat').classList.toggle('filter-active', filterMode === 'overdue');
     document.getElementById('dueTodayTopTrigger').classList.toggle('filter-active', filterMode === 'dueToday');
     document.getElementById('overdueTopTrigger').classList.toggle('filter-active', filterMode === 'overdue');
+    document.getElementById('waitingTrigger').classList.toggle('filter-active', filterMode === 'waiting');
+    document.getElementById('staleTrigger').classList.toggle('filter-active', filterMode === 'stale');
 
     listHeader.style.display = visible.length === 0 ? 'none' : 'grid';
     listHeader.classList.toggle('grid-done', page === 'done');
@@ -725,8 +767,10 @@
     if (visible.length === 0) {
       emptyMsg.textContent = searchTerm
         ? 'No tasks match "' + searchInput.value.trim() + '".'
+        : page === 'today'
+        ? 'Nothing overdue, due today or starred. Star a task (☆ in its window) to add it here, or see the To-do tab for everything else.'
         : page === 'active'
-        ? (filterMode ? 'No tasks match this filter.' : 'Nothing on the list. Add your first task above.')
+        ? (filterMode ? 'No tasks match this filter.' : 'Nothing on the list. Type above, or press N, to add a task.')
         : page === 'pending'
           ? 'No pending tasks.'
           : 'No completed tasks yet.';
@@ -749,19 +793,41 @@
         const li = document.createElement('li');
         const isDueToday = !item.done && item.dueDate === todayDateString();
         const isRowOverdue = !item.done && isPastDue(item.dueDate);
-        li.className = 'item' + (item.done ? ' done' : '') + (isDueToday ? ' due-today' : '') + (isRowOverdue ? ' overdue-row' : '');
+        li.className = 'item' + (item.done ? ' done' : '') + (isDueToday ? ' due-today' : '') + (isRowOverdue ? ' overdue-row' : '') +
+          (selectMode && selectedIds.has(item.id) ? ' selected' : '');
         li.dataset.id = item.id;
         li.dataset.group = group ? String(group.key) : '';
-        li.draggable = !expandedIds.has(item.id);
+        li.draggable = !expandedIds.has(item.id) && !selectMode;
 
         const box = document.createElement('div');
         box.className = 'box';
         box.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg>';
-        box.addEventListener('click', () => toggle(item.id));
+        box.setAttribute('role', 'checkbox');
+        box.setAttribute('aria-checked', item.done ? 'true' : 'false');
+        box.setAttribute('aria-label', (item.done ? 'Mark not done: ' : 'Mark done: ') + item.text);
+        box.addEventListener('click', () => (selectMode ? toggleSelected(item.id) : toggle(item.id)));
 
         const taskText = document.createElement('div');
         taskText.className = 'task-text' + (item.priority === 'high' ? ' high-priority' : '');
-        taskText.textContent = item.text;
+        if (item.starred && !item.done) {
+          const star = document.createElement('span');
+          star.className = 'star-mark';
+          star.textContent = '★ ';
+          star.title = 'Starred for Today';
+          taskText.appendChild(star);
+        }
+        const taskTextLabel = document.createElement('span');
+        taskTextLabel.textContent = item.text;
+        taskText.appendChild(taskTextLabel);
+        const realSubtasks = (item.subtasks || []).filter(s => s.type !== 'note');
+        if (realSubtasks.length) {
+          const doneCount = realSubtasks.filter(s => s.done).length;
+          const progress = document.createElement('span');
+          progress.className = 'subtask-progress' + (doneCount === realSubtasks.length ? ' all-done' : '');
+          progress.textContent = '✓ ' + doneCount + '/' + realSubtasks.length;
+          progress.title = doneCount + ' of ' + realSubtasks.length + ' subtasks done';
+          taskText.appendChild(progress);
+        }
 
         const categoryCell = document.createElement('div');
         categoryCell.className = 'cell cell-category';
@@ -771,13 +837,21 @@
           categoryTag.textContent = item.category;
           categoryCell.appendChild(categoryTag);
         }
-        if (!item.done && item.pending && page === 'active') {
+        if (!item.done && item.pending && (page === 'active' || page === 'today')) {
           const sleepTag = document.createElement('span');
           sleepTag.className = 'category-tag sleep-tag';
-          sleepTag.textContent = item.snoozeUntil ? ('\u263E Asleep til ' + toUKDateShort(item.snoozeUntil)) : '\u23F8 Pending';
+          sleepTag.textContent = item.snoozeUntil ? ('\u263E Asleep till ' + toUKDateShort(item.snoozeUntil)) : '\u23F8 Pending';
           categoryCell.appendChild(sleepTag);
         }
-        if (!item.done && !item.pending && item.wokeUp && page === 'active') {
+        // shown beside the name (not in the narrow category column) so it's never cut off
+        if (!item.done && item.waitingOn) {
+          const waitTag = document.createElement('span');
+          waitTag.className = 'waiting-tag';
+          waitTag.textContent = '\u23F3 ' + item.waitingOn;
+          waitTag.title = 'Waiting on ' + item.waitingOn;
+          taskText.appendChild(waitTag);
+        }
+        if (!item.done && !item.pending && item.wokeUp && (page === 'active' || page === 'today')) {
           const wokeTag = document.createElement('span');
           wokeTag.className = 'category-tag woke-tag';
           wokeTag.textContent = '⏰ Woke up' + (item.wokeAt ? ' ' + toUKDateShort(item.wokeAt) : '');
@@ -807,7 +881,7 @@
         if (item.dueDate) {
           const isOverdue = !item.done && isPastDue(item.dueDate);
           dueCell.className += ' created' + (isOverdue ? ' overdue' : '');
-          dueCell.textContent = isOverdue ? 'Overdue' : formatDate(item.dueDate);
+          dueCell.textContent = item.done ? formatDate(item.dueDate) : formatDue(item.dueDate);
         }
 
         // signal bars (3 = high, 2 = medium, 1 = low), so priority doesn't compete with the overdue red
@@ -855,7 +929,7 @@
         row.appendChild(stamp);
         li.appendChild(row);
 
-        taskText.addEventListener('click', () => toggleExpanded(item.id));
+        taskText.addEventListener('click', () => (selectMode ? toggleSelected(item.id) : toggleExpanded(item.id)));
 
         if (expandedIds.has(item.id)) {
           const panel = document.createElement('div');
@@ -871,7 +945,7 @@
           editName.maxLength = 280;
           editName.addEventListener('input', () => {
             item.text = editName.value;
-            taskText.textContent = editName.value;
+            taskTextLabel.textContent = editName.value;
             taskEditTitle.textContent = 'Editing: ' + editName.value;
             debouncedSave();
           });
@@ -1004,11 +1078,71 @@
           editAssignedByField.appendChild(editAssignedByLabel);
           editAssignedByField.appendChild(editAssignedBy);
 
-          editMetaRow.appendChild(editDue);
-          editMetaRow.appendChild(editPriority);
-          editMetaRow.appendChild(editCategory);
+          const editRepeat = document.createElement('select');
+          editRepeat.className = 'edit-category';
+          [['', 'No repeat'], ['daily', 'Daily'], ['weekdays', 'Weekdays'], ['weekly', 'Weekly'], ['monthly', 'Monthly']].forEach(([v, label]) => {
+            const opt = document.createElement('option');
+            opt.value = v;
+            opt.textContent = label;
+            if ((item.repeat || '') === v) opt.selected = true;
+            editRepeat.appendChild(opt);
+          });
+          editRepeat.title = 'Repeating tasks need a due date';
+          editRepeat.addEventListener('change', () => {
+            item.repeat = editRepeat.value;
+            if (item.repeat && !item.dueDate) showToast('Add a due date so the repeat knows when the next one is due.');
+            save();
+            render();
+          });
 
-          editFields.appendChild(editName);
+          const editWaiting = document.createElement('input');
+          editWaiting.type = 'text';
+          editWaiting.className = 'edit-category edit-waiting';
+          editWaiting.maxLength = 60;
+          editWaiting.placeholder = 'Nobody';
+          editWaiting.value = item.waitingOn || '';
+          editWaiting.setAttribute('list', 'peopleList');
+          editWaiting.addEventListener('input', () => {
+            item.waitingOn = editWaiting.value.trim();
+            debouncedSave();
+          });
+          editWaiting.addEventListener('change', () => { save(); render(); });
+
+          const starBtn = document.createElement('button');
+          starBtn.type = 'button';
+          starBtn.className = 'star-toggle' + (item.starred ? ' on' : '');
+          starBtn.textContent = item.starred ? '★ Starred for Today' : '☆ Star for Today';
+          starBtn.setAttribute('aria-pressed', item.starred ? 'true' : 'false');
+          starBtn.addEventListener('click', () => {
+            item.starred = !item.starred;
+            save();
+            render();
+          });
+
+          // every field gets a visible label
+          const field = (labelText, el) => {
+            const wrap = document.createElement('label');
+            wrap.className = 'field';
+            const cap = document.createElement('span');
+            cap.className = 'field-label';
+            cap.textContent = labelText;
+            wrap.appendChild(cap);
+            wrap.appendChild(el);
+            return wrap;
+          };
+
+          editMetaRow.appendChild(field('Due date', editDue));
+          editMetaRow.appendChild(field('Priority', editPriority));
+          editMetaRow.appendChild(field('Category', editCategory));
+          editMetaRow.appendChild(field('Repeat', editRepeat));
+          editMetaRow.appendChild(field('Waiting on', editWaiting));
+
+          const nameRow = document.createElement('div');
+          nameRow.className = 'edit-name-row';
+          nameRow.appendChild(field('Task', editName));
+          nameRow.appendChild(starBtn);
+
+          editFields.appendChild(nameRow);
           editFields.appendChild(editMetaRow);
           editFields.appendChild(editAssigneeField);
           editFields.appendChild(editAssignedByField);
@@ -1295,7 +1429,7 @@
               if (item.snoozeUntil) {
                 snoozeInfo = document.createElement('span');
                 snoozeInfo.className = 'snooze-info';
-                snoozeInfo.textContent = 'Sleeping until ' + toUKDateShort(item.snoozeUntil);
+                snoozeInfo.textContent = 'Sleeping till ' + toUKDateShort(item.snoozeUntil);
               }
             } else {
               sleep1WeekBtn = document.createElement('button');
@@ -1355,13 +1489,17 @@
     const remaining = todos.filter(t => !t.done && !t.pending).length;
     const pendingCount = todos.filter(t => !t.done && t.pending).length;
     const completed = todos.filter(t => t.done).length;
-    countLabel.textContent = page === 'active'
+    const todayCount = todos.filter(isTodayTask).length;
+    countLabel.textContent = page === 'today'
+      ? todayCount + (todayCount === 1 ? ' item for today' : ' items for today')
+      : page === 'active'
       ? remaining + (remaining === 1 ? ' item left' : ' items left')
       : page === 'pending'
         ? pendingCount + (pendingCount === 1 ? ' item pending' : ' items pending')
         : completed + (completed === 1 ? ' item completed' : ' items completed');
 
-    newTaskOverlay.classList.toggle('open', page === 'active' && addFormOpen);
+    const canAdd = page === 'active' || page === 'today';
+    newTaskOverlay.classList.toggle('open', canAdd && addFormOpen);
     if (editingItem) {
       taskEditTitle.textContent = 'Editing: ' + editingItem.text;
       taskEditOverlay.classList.add('open');
@@ -1374,7 +1512,8 @@
       taskEditOverlay.classList.remove('open');
       lastEditedId = null;
     }
-    document.querySelector('.quick-add').style.display = page === 'active' ? 'flex' : 'none';
+    document.querySelector('.quick-add').style.display = canAdd ? 'flex' : 'none';
+    updateBulkBar();
     clearBtn.style.display = page === 'done' && completed > 0 ? 'inline' : 'none';
     exportBtn.style.display = page === 'done' && completed > 0 ? 'inline' : 'none';
 
@@ -1402,6 +1541,13 @@
     document.getElementById('pendingTopCount').textContent = pendingCount;
     document.getElementById('tabActiveCount').textContent = openTasks.length - pendingCount;
     document.getElementById('tabDoneCount').textContent = todos.length - openTasks.length;
+    document.getElementById('tabTodayCount').textContent = todos.filter(isTodayTask).length;
+    const waitingCount = openTasks.filter(t => t.waitingOn).length;
+    const staleCount = todos.filter(isStale).length;
+    document.getElementById('waitingCount').textContent = waitingCount;
+    document.getElementById('staleCount').textContent = staleCount;
+    document.getElementById('waitingTrigger').style.display = waitingCount || filterMode === 'waiting' ? '' : 'none';
+    document.getElementById('staleTrigger').style.display = staleCount || filterMode === 'stale' ? '' : 'none';
 
     document.getElementById('dueTodayStat').classList.toggle('flash', dueTodayCount > 0);
     document.getElementById('overdueStat').classList.toggle('flash', overdueCount > 0);
@@ -1412,10 +1558,12 @@
   function setPage(next) {
     page = next;
     if (page !== 'active') filterMode = null;
+    if (selectMode) exitSelectMode();
+    tabToday.classList.toggle('active', page === 'today');
     tabActive.classList.toggle('active', page === 'active');
     tabPending.classList.toggle('active', page === 'pending');
     tabDone.classList.toggle('active', page === 'done');
-    [tabActive, tabPending, tabDone].forEach(b => b.setAttribute('aria-selected', b.classList.contains('active') ? 'true' : 'false'));
+    [tabToday, tabActive, tabPending, tabDone].forEach(b => b.setAttribute('aria-selected', b.classList.contains('active') ? 'true' : 'false'));
     render();
   }
 
@@ -1462,16 +1610,42 @@
       '</div>';
   }
 
+  // shown once a day; on Mondays it also lists tasks nobody has touched for a while, and nudges for a backup
   function maybeShowDueSummary() {
+    const todayStr = todayDateString();
+    const shownKey = 'todo_summary_shown_' + (new URLSearchParams(location.search).get('u') || '');
+    try { if (localStorage.getItem(shownKey) === todayStr) return; } catch (e) { /* storage unavailable: show it */ }
+
     const { overdue, dueToday, dueThisWeek } = getDueSummaryData();
-    if (overdue.length === 0 && dueToday.length === 0 && dueThisWeek.length === 0) return;
+    const isMonday = new Date().getDay() === 1;
+    const stale = isMonday ? todos.filter(isStale) : [];
+    const backupDays = lastExportAt ? Math.floor((Date.now() - lastExportAt) / 86400000) : null;
+    const needsBackup = isMonday && (backupDays === null || backupDays > 30);
+    if (!overdue.length && !dueToday.length && !dueThisWeek.length && !stale.length && !needsBackup) return;
+
+    const staleSection = stale.length
+      ? '<div class="due-summary-section"><div class="due-summary-title">Not touched in ' + STALE_DAYS + '+ days (' + stale.length + ')</div>' +
+        '<p class="settings-hint">Worth a quick look: finish, sleep or update these.</p>' +
+        '<ul class="due-summary-list">' + stale.slice(0, 15).map(t => '<li><span class="due-summary-task">' + escapeHtml(t.text) + '</span>' +
+        '<span class="due-summary-date">' + escapeHtml(formatDate(t.updatedAt || t.createdAt)) + '</span></li>').join('') + '</ul></div>'
+      : '';
+    const backupSection = needsBackup
+      ? '<div class="due-summary-section backup-nudge"><div class="due-summary-title">Backup</div>' +
+        '<p class="settings-hint">' + (backupDays === null ? 'You haven\'t saved a CSV backup yet.' : 'Your last CSV backup was ' + backupDays + ' days ago.') +
+        (encryptionOn() ? ' Your list is encrypted, so a backup is the only way back if the passphrase is forgotten.' : '') +
+        ' <button type="button" class="link-btn" id="summaryExportBtn">Export now</button></p></div>'
+      : '';
 
     const body = document.getElementById('dueSummaryBody');
     body.innerHTML =
       buildDueSummarySection('Overdue', overdue, 'overdue') +
       buildDueSummarySection('Due Today', dueToday) +
-      buildDueSummarySection('Due This Week', dueThisWeek);
+      buildDueSummarySection('Due This Week', dueThisWeek) +
+      staleSection + backupSection;
+    const exportNow = document.getElementById('summaryExportBtn');
+    if (exportNow) exportNow.addEventListener('click', () => exportAllBtn.click());
 
+    try { localStorage.setItem(shownKey, todayStr); } catch (e) { /* ignore */ }
     document.getElementById('dueSummaryOverlay').classList.add('open');
   }
 
@@ -1485,8 +1659,12 @@
     const assignedTo = taskAssignees[0] || '';
     const assignedBy = assignedBySelect.value || '';
     const repeat = dueDate ? (repeatSelect.value || '') : '';
-    todos.push({ id: uid(), text: value, done: false, createdAt: Date.now(), priority, dueDate, category, assignedTo, assignees: taskAssignees, assignedBy, repeat });
+    const waitingOn = waitingOnInput.value.trim();
+    // a new task added while looking at Today is starred, so it shows up there
+    const starred = page === 'today';
+    todos.push({ id: uid(), text: value, done: false, createdAt: Date.now(), priority, dueDate, category, assignedTo, assignees: taskAssignees, assignedBy, repeat, waitingOn, starred });
     repeatSelect.value = '';
+    waitingOnInput.value = '';
     input.value = '';
     prioritySelect.value = 'medium';
     dueDateInput.value = '';
@@ -1514,6 +1692,79 @@
     expandedIds.clear();
     render();
   }
+
+  // ---------- select several tasks and act on them together ----------
+  const bulkBar = document.getElementById('bulkBar');
+  const selectBtn = document.getElementById('selectBtn');
+  const bulkCategory = document.getElementById('bulkCategory');
+
+  function toggleSelected(id) {
+    if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+    render();
+  }
+
+  function enterSelectMode() {
+    selectMode = true;
+    selectedIds.clear();
+    expandedIds.clear();
+    render();
+  }
+
+  function exitSelectMode() {
+    selectMode = false;
+    selectedIds.clear();
+    render();
+  }
+
+  function updateBulkBar() {
+    document.body.classList.toggle('select-mode', selectMode);
+    selectBtn.textContent = selectMode ? 'Cancel' : 'Select';
+    selectBtn.setAttribute('aria-pressed', selectMode ? 'true' : 'false');
+    bulkBar.classList.toggle('open', selectMode);
+    const n = selectedIds.size;
+    document.getElementById('bulkCount').textContent = n ? n + ' selected' : 'Tap tasks to select them';
+    bulkBar.querySelectorAll('button[data-bulk]').forEach(b => { if (b.dataset.bulk !== 'cancel') b.disabled = !n; });
+    bulkCategory.disabled = !n;
+    if (bulkCategory.options.length !== categories.length + 2) {
+      bulkCategory.innerHTML = '<option value="">Set category…</option><option value="__none">No category</option>' +
+        categories.map(c => '<option>' + escapeHtml(c) + '</option>').join('');
+    }
+  }
+
+  function bulkApply(label, change) {
+    const chosen = todos.filter(t => selectedIds.has(t.id));
+    if (!chosen.length) return;
+    const snap = JSON.stringify(todos);
+    chosen.forEach(change);
+    selectMode = false;
+    selectedIds.clear();
+    render();
+    save();
+    showToast(label + ' ' + chosen.length + ' task' + (chosen.length === 1 ? '' : 's') + '.', () => {
+      todos = JSON.parse(snap);
+      render();
+      save();
+      showToast('Restored.');
+    });
+  }
+
+  selectBtn.addEventListener('click', () => (selectMode ? exitSelectMode() : enterSelectMode()));
+  bulkBar.addEventListener('click', e => {
+    const b = e.target.closest('button[data-bulk]');
+    if (!b) return;
+    const action = b.dataset.bulk;
+    if (action === 'cancel') return exitSelectMode();
+    if (action === 'done') bulkApply('Completed', t => { if (!t.done) { t.done = true; t.pending = false; t.completedAt = Date.now(); spawnNextRepeat(t); } });
+    if (action === 'pending') bulkApply('Moved to Pending', t => { t.done = false; t.completedAt = null; t.pending = true; t.wokeUp = false; });
+    if (action === 'active') bulkApply('Moved to To-do', t => { t.done = false; t.completedAt = null; t.pending = false; t.snoozeUntil = null; });
+    if (action === 'star') bulkApply('Starred', t => { t.starred = true; });
+  });
+  bulkCategory.addEventListener('change', () => {
+    const v = bulkCategory.value;
+    if (!v) return;
+    bulkApply('Updated the category of', t => { t.category = v === '__none' ? '' : v; });
+    bulkCategory.value = '';
+  });
   document.getElementById('taskEditClose').addEventListener('click', closeTaskEditWindow);
   taskEditOverlay.addEventListener('click', e => {
     if (e.target === taskEditOverlay) closeTaskEditWindow();
@@ -1529,9 +1780,20 @@
           return;
         }
       }
+      // ticking is easy to do by accident, so completing offers Undo (which also removes a repeat's next copy)
+      const snap = item.done ? null : JSON.stringify(todos);
       item.done = !item.done;
       item.completedAt = item.done ? Date.now() : null;
-      if (item.done) { item.pending = false; spawnNextRepeat(item); }
+      if (item.done) {
+        item.pending = false;
+        const next = spawnNextRepeat(item);
+        showToast('Marked done.' + (next ? ' Next one due ' + formatDate(next) + '.' : ''), () => {
+          todos = JSON.parse(snap);
+          render();
+          save();
+          showToast('Restored.');
+        });
+      }
     }
     render();
     save();
@@ -1633,8 +1895,16 @@
       due: headers.indexOf('due'),
       completed: headers.indexOf('completed'),
       subtasks: headers.indexOf('subtasks'),
-      notes: headers.indexOf('notes')
+      notes: headers.indexOf('notes'),
+      waitingOn: headers.indexOf('waiting on'),
+      repeat: headers.indexOf('repeat'),
+      starred: headers.indexOf('starred')
     };
+
+    // skip tasks already on the list (or archived), and repeats within the file: same name + created date
+    const taskKey = (name, created) => name.trim().toLowerCase() + '|' + toISODate(created);
+    const seen = new Set(todos.concat(archivedTasks).map(t => taskKey(t.text || '', t.createdAt)));
+    let skippedCount = 0;
 
     if (idx.task === -1) {
       showImportStatus("That doesn't look like a file exported from this app.", 'error');
@@ -1673,6 +1943,9 @@
       const createdAt = idx.created !== -1
         ? (parseISODateToTimestamp((row[idx.created] || '').trim()) || Date.now())
         : Date.now();
+      const key = taskKey(text_, createdAt);
+      if (seen.has(key)) { skippedCount++; continue; }
+      seen.add(key);
       const completedAt = done && idx.completed !== -1
         ? parseISODateToTimestamp((row[idx.completed] || '').trim())
         : null;
@@ -1714,7 +1987,10 @@
         assignees: importedAssignees,
         assignedBy,
         subtasks,
-        completedAt
+        completedAt,
+        waitingOn: idx.waitingOn !== -1 ? (row[idx.waitingOn] || '').trim() : '',
+        repeat: idx.repeat !== -1 && ['daily', 'weekdays', 'weekly', 'monthly'].includes((row[idx.repeat] || '').trim()) && dueDate ? row[idx.repeat].trim() : '',
+        starred: idx.starred !== -1 && /^(yes|true|1)$/i.test((row[idx.starred] || '').trim())
       });
 
       if (category && !categories.includes(category)) {
@@ -1737,8 +2013,9 @@
       importedCount++;
     }
 
+    const skippedNote = skippedCount ? ' Skipped ' + skippedCount + ' already on your list (same name and created date).' : '';
     if (importedCount === 0) {
-      showImportStatus('No valid tasks found in that file.', 'error');
+      showImportStatus(skippedCount ? 'Nothing new to import.' + skippedNote : 'No valid tasks found in that file.', skippedCount ? 'success' : 'error');
       return;
     }
 
@@ -1762,7 +2039,7 @@
       renderAssignedByList();
     }
     render();
-    showImportStatus('Imported ' + importedCount + (importedCount === 1 ? ' task.' : ' tasks.'), 'success');
+    showImportStatus('Imported ' + importedCount + (importedCount === 1 ? ' task.' : ' tasks.') + skippedNote, 'success');
   }
 
   function showImportStatus(message, type) {
@@ -1828,7 +2105,7 @@
   }
 
   function exportAllTasks() {
-    const headers = ['Task', 'Status', 'Priority', 'Category', 'Assigned To', 'Assigned By', 'Created', 'Due', 'Completed', 'Subtasks'];
+    const headers = ['Task', 'Status', 'Priority', 'Category', 'Assigned To', 'Assigned By', 'Created', 'Due', 'Completed', 'Subtasks', 'Waiting On', 'Repeat', 'Starred'];
     const rows = todos.map(item => [
       item.text,
       item.done ? 'Completed' : (item.pending ? 'Pending' : 'Active'),
@@ -1839,7 +2116,10 @@
       toISODate(item.createdAt),
       toISODate(item.dueDate),
       toISODate(item.completedAt),
-      summarizeSubtasks(item)
+      summarizeSubtasks(item),
+      item.waitingOn || '',
+      item.repeat || '',
+      item.starred ? 'yes' : ''
     ]);
 
     downloadCsv(headers, rows, 'all-tasks-' + todayDateString() + '.csv');
@@ -2127,7 +2407,7 @@
   function quickAddTask() {
     const value = quickAdd.value.trim();
     if (!value) return;
-    todos.push({ id: uid(), text: value, done: false, createdAt: Date.now(), priority: 'medium', dueDate: '', category: '', assignedTo: '', assignees: [], assignedBy: '', repeat: '' });
+    todos.push({ id: uid(), text: value, done: false, createdAt: Date.now(), priority: 'medium', dueDate: '', category: '', assignedTo: '', assignees: [], assignedBy: '', repeat: '', starred: page === 'today' });
     quickAdd.value = '';
     render();
     save();
@@ -2195,13 +2475,18 @@
         const ov = document.getElementById(pair[0]);
         if (ov && ov.classList.contains('open')) { document.getElementById(pair[1]).click(); return; }
       }
+      if (selectMode) { exitSelectMode(); return; }
       if (document.activeElement && document.activeElement.blur && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) document.activeElement.blur();
       return;
     }
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '') || (document.activeElement && document.activeElement.isContentEditable);
     if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
     if (document.querySelector('.modal-overlay.open, .new-task-overlay.open')) return;
-    if (e.key === 'n') { e.preventDefault(); quickAdd.focus(); }
+    if (e.key === 'n') {
+      e.preventDefault();
+      if (page !== 'active' && page !== 'today') setPage('active');
+      quickAdd.focus();
+    }
     else if (e.key === '/') { e.preventDefault(); searchInput.focus(); }
   });
 
@@ -2246,11 +2531,7 @@
 
   function toggleFilter(mode) {
     filterMode = (filterMode === mode) ? null : mode;
-    page = 'active';
-    tabActive.classList.add('active');
-    tabPending.classList.remove('active');
-    tabDone.classList.remove('active');
-    render();
+    setPage('active');
   }
 
   document.getElementById('dueTodayStat').addEventListener('click', () => toggleFilter('dueToday'));
@@ -2268,6 +2549,8 @@
     prioritySelect.value = 'medium';
     dueDateInput.value = '';
     categorySelect.value = '';
+    repeatSelect.value = '';
+    waitingOnInput.value = '';
     selectedAddAssignees = [];
     populateAssigneeChecklist();
     assignedBySelect.value = '';
@@ -2288,8 +2571,11 @@
     filterMode = null;
     setPage('active');
   });
+  tabToday.addEventListener('click', () => setPage('today'));
   tabPending.addEventListener('click', () => setPage('pending'));
   tabDone.addEventListener('click', () => setPage('done'));
+  document.getElementById('waitingTrigger').addEventListener('click', () => toggleFilter('waiting'));
+  document.getElementById('staleTrigger').addEventListener('click', () => toggleFilter('stale'));
 
   function populateCategorySelect() {
     const previousValue = categorySelect.value;

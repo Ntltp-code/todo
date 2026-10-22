@@ -42,6 +42,7 @@
 
     <div class="tabs-bar">
     <div class="tabs" role="tablist">
+      <button class="tab" id="tabToday" type="button" role="tab" aria-selected="false" title="Overdue, due today and starred">Today <span class="tab-count" id="tabTodayCount">0</span></button>
       <button class="tab active" id="tabActive" type="button" role="tab" aria-selected="true">To-do <span class="tab-count" id="tabActiveCount">0</span></button>
       <button class="tab" id="tabPending" type="button" role="tab" aria-selected="false">Pending <span class="tab-count" id="pendingTopCount">0</span></button>
       <button class="tab" id="tabDone" type="button" role="tab" aria-selected="false">Completed <span class="tab-count" id="tabDoneCount">0</span></button>
@@ -59,9 +60,13 @@
       <span class="toolbar-chips">
         <button type="button" class="filter-trigger chip-due" id="dueTodayTopTrigger">Due today <span id="dueTodayTopCount">0</span></button>
         <button type="button" class="filter-trigger chip-overdue" id="overdueTopTrigger">Overdue <span id="overdueTopCount">0</span></button>
+        <button type="button" class="filter-trigger chip-neutral" id="waitingTrigger" title="Tasks waiting on someone else">&#9203; Waiting <span id="waitingCount">0</span></button>
+        <button type="button" class="filter-trigger chip-neutral" id="staleTrigger" title="Open tasks nobody has changed in 14+ days">Untouched 14d+ <span id="staleCount">0</span></button>
       </span>
+      <button type="button" class="select-btn" id="selectBtn" aria-pressed="false">Select</button>
     </div>
     </div>
+    <datalist id="peopleList"></datalist>
 
     <div class="quick-add">
       <input type="text" id="quickAdd" placeholder="Add a task and press Enter..." maxlength="280" autocomplete="off" aria-label="Quick add a task">
@@ -80,21 +85,30 @@
           <button id="newTaskWindowClose" class="new-task-window-close" type="button" aria-label="Close">&#10005;</button>
         </div>
         <div class="add-row" id="addRow">
-          <input type="text" id="newItem" placeholder="Write a new task..." maxlength="280" autocomplete="off">
-          <input type="date" id="dueDateInput" aria-label="Due date">
-          <select id="prioritySelect" aria-label="Priority">
-            <option value="high">High</option>
-            <option value="medium" selected>Medium</option>
-            <option value="low">Low</option>
-          </select>
-          <select id="repeatSelect" aria-label="Repeat (needs a due date)">
-            <option value="">No repeat</option>
-            <option value="daily">Repeat daily</option>
-            <option value="weekdays">Repeat weekdays</option>
-            <option value="weekly">Repeat weekly</option>
-            <option value="monthly">Repeat monthly</option>
-          </select>
-          <select id="categorySelect" aria-label="Category"></select>
+          <label class="field"><span class="field-label">Task</span>
+            <input type="text" id="newItem" placeholder="What needs doing?" maxlength="280" autocomplete="off"></label>
+          <div class="edit-meta-row">
+            <label class="field"><span class="field-label">Due date</span>
+              <input type="date" id="dueDateInput"></label>
+            <label class="field"><span class="field-label">Priority</span>
+              <select id="prioritySelect">
+                <option value="high">High</option>
+                <option value="medium" selected>Medium</option>
+                <option value="low">Low</option>
+              </select></label>
+            <label class="field"><span class="field-label">Category</span>
+              <select id="categorySelect"></select></label>
+            <label class="field"><span class="field-label">Repeat</span>
+              <select id="repeatSelect" title="Repeating tasks need a due date">
+                <option value="">No repeat</option>
+                <option value="daily">Daily</option>
+                <option value="weekdays">Weekdays</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select></label>
+            <label class="field"><span class="field-label">Waiting on</span>
+              <input type="text" id="waitingOnInput" list="peopleList" placeholder="Nobody" maxlength="60" autocomplete="off"></label>
+          </div>
           <div class="assignee-field">
             <div class="assignee-field-label">Assigned to</div>
             <div class="assignee-checklist" id="assigneeChecklist"></div>
@@ -134,6 +148,16 @@
     </div>
 
     <ul class="list" id="list"></ul>
+
+    <div class="bulk-bar" id="bulkBar" role="toolbar" aria-label="Selected tasks">
+      <span id="bulkCount">Tap tasks to select them</span>
+      <button type="button" data-bulk="done">Complete</button>
+      <button type="button" data-bulk="pending">Move to Pending</button>
+      <button type="button" data-bulk="active">Move to To-do</button>
+      <button type="button" data-bulk="star">&#9733; Star</button>
+      <select id="bulkCategory" aria-label="Set category for selected tasks"></select>
+      <button type="button" data-bulk="cancel" class="bulk-cancel">Cancel</button>
+    </div>
     <div class="empty" id="emptyMsg" style="display:none;">Nothing on the list. Add your first task above.</div>
 
     <footer>
@@ -177,58 +201,19 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v11.2</span></h2>
+      <h2>Settings <span class="settings-version">v12.0</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
+    <div class="settings-group-label">Appearance</div>
     <div class="accordion-section">
       <button class="accordion-header" type="button" data-target="themeContent">
         <span>Theme</span>
         <span class="accordion-arrow">&#9656;</span>
       </button>
       <div class="accordion-content" id="themeContent">
-        <p class="settings-hint">Pick a color scheme for the app.</p>
+        <p class="settings-hint">Pick a colour scheme. "Match my device" switches between Warm and Warm Dark with your device's light/dark setting.</p>
         <div class="theme-options" id="themeOptions">
-          <button class="theme-option" type="button" data-theme="light">
-            <span class="theme-swatch theme-swatch-light"></span>
-            <span>Light</span>
-          </button>
-          <button class="theme-option" type="button" data-theme="dark">
-            <span class="theme-swatch theme-swatch-dark"></span>
-            <span>Dark</span>
-          </button>
-          <button class="theme-option" type="button" data-theme="colourful">
-            <span class="theme-swatch theme-swatch-colourful"></span>
-            <span>Colourful</span>
-          </button>
-          <button class="theme-option" type="button" data-theme="notebook">
-            <span class="theme-swatch theme-swatch-notebook"></span>
-            <span>Old Notebook</span>
-          </button>
-          <button class="theme-option" type="button" data-theme="forest">
-            <span class="theme-swatch theme-swatch-forest"></span>
-            <span>Forest</span>
-          </button>
-          <button class="theme-option" type="button" data-theme="ocean">
-            <span class="theme-swatch theme-swatch-ocean"></span>
-            <span>Ocean</span>
-          </button>
-          <button class="theme-option" type="button" data-theme="sunset">
-            <span class="theme-swatch theme-swatch-sunset"></span>
-            <span>Sunset</span>
-          </button>
-          <button class="theme-option" type="button" data-theme="slate">
-            <span class="theme-swatch theme-swatch-slate"></span>
-            <span>Slate</span>
-          </button>
-          <button class="theme-option" type="button" data-theme="bw">
-            <span class="theme-swatch theme-swatch-bw"></span>
-            <span>Black &amp; White</span>
-          </button>
-          <button class="theme-option" type="button" data-theme="wb">
-            <span class="theme-swatch theme-swatch-wb"></span>
-            <span>White &amp; Black</span>
-          </button>
           <button class="theme-option" type="button" data-theme="auto">
             <span class="theme-swatch theme-swatch-auto"></span>
             <span>Match my device</span>
@@ -241,13 +226,23 @@
             <span class="theme-swatch theme-swatch-warmdark"></span>
             <span>Warm Dark</span>
           </button>
-          <button class="theme-option" type="button" data-theme="terminal">
-            <span class="theme-swatch theme-swatch-terminal"></span>
-            <span>Terminal</span>
+          <button class="theme-option" type="button" data-theme="light">
+            <span class="theme-swatch theme-swatch-light"></span>
+            <span>Light</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="dark">
+            <span class="theme-swatch theme-swatch-dark"></span>
+            <span>Dark</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="bw">
+            <span class="theme-swatch theme-swatch-bw"></span>
+            <span>High contrast</span>
           </button>
         </div>
       </div>
     </div>
+
+    <div class="settings-group-label">Lists</div>
 
     <div class="accordion-section">
       <button class="accordion-header" type="button" data-target="categoriesContent">
@@ -291,6 +286,7 @@
       </div>
     </div>
 
+    <div class="settings-group-label">Data</div>
     <div class="accordion-section">
       <button class="accordion-header" type="button" data-target="exportContent">
         <span>Export</span>
@@ -304,6 +300,32 @@
           <input type="checkbox" id="reportIncludeCompleted">
           Include completed tasks in the Summary Report
         </label>
+      </div>
+    </div>
+
+    <div class="accordion-section">
+      <button class="accordion-header" type="button" data-target="importContent">
+        <span>Import</span>
+        <span class="accordion-arrow">&#9656;</span>
+      </button>
+      <div class="accordion-content" id="importContent">
+        <p class="settings-hint">Import tasks from a CSV file exported by this app (Export All Tasks or the Completed export). Imported tasks are added alongside your current list, not replacing it. Tasks you already have (same name and created date) are skipped, so importing the same file twice won't create duplicates.</p>
+        <input type="file" id="importFileInput" accept=".csv" class="import-file-input">
+        <button id="importBtn" class="export-all-btn" type="button">Import Tasks</button>
+        <div id="importStatus" class="import-status"></div>
+      </div>
+    </div>
+
+    <div class="accordion-section">
+      <button class="accordion-header" type="button" data-target="archiveContent">
+        <span>Archive</span>
+        <span class="accordion-arrow">&#9656;</span>
+      </button>
+      <div class="accordion-content" id="archiveContent">
+        <p class="settings-hint">Completed tasks older than 90 days are moved out of your list once a day, so it stays quick. Nothing is deleted &mdash; you can restore everything here.</p>
+        <div id="archiveStatus" class="import-status"></div>
+        <button id="archiveNowBtn" class="export-all-btn" type="button">Archive old tasks now</button>
+        <button id="restoreArchiveBtn" class="export-all-btn report-btn" type="button">Restore all archived tasks</button>
       </div>
     </div>
 
@@ -330,32 +352,7 @@
       </div>
     </div>
 
-    <div class="accordion-section">
-      <button class="accordion-header" type="button" data-target="importContent">
-        <span>Import</span>
-        <span class="accordion-arrow">&#9656;</span>
-      </button>
-      <div class="accordion-content" id="importContent">
-        <p class="settings-hint">Import tasks from a CSV file exported by this app (Export All Tasks or the Completed export). Imported tasks are added alongside your current list, not replacing it.</p>
-        <input type="file" id="importFileInput" accept=".csv" class="import-file-input">
-        <button id="importBtn" class="export-all-btn" type="button">Import Tasks</button>
-        <div id="importStatus" class="import-status"></div>
-      </div>
-    </div>
-
-    <div class="accordion-section">
-      <button class="accordion-header" type="button" data-target="archiveContent">
-        <span>Archive</span>
-        <span class="accordion-arrow">&#9656;</span>
-      </button>
-      <div class="accordion-content" id="archiveContent">
-        <p class="settings-hint">Completed tasks older than 90 days are moved out of your list once a day, so it stays quick. Nothing is deleted &mdash; you can restore everything here.</p>
-        <div id="archiveStatus" class="import-status"></div>
-        <button id="archiveNowBtn" class="export-all-btn" type="button">Archive old tasks now</button>
-        <button id="restoreArchiveBtn" class="export-all-btn report-btn" type="button">Restore all archived tasks</button>
-      </div>
-    </div>
-
+    <div class="settings-group-label">Security</div>
     <div class="accordion-section">
       <button class="accordion-header" type="button" data-target="securityContent">
         <span>Security</span>
@@ -379,6 +376,7 @@
       </div>
     </div>
 
+    <div class="settings-group-label danger">Danger zone</div>
     <div class="accordion-section">
       <button class="accordion-header" type="button" data-target="resetContent">
         <span>Reset</span>
@@ -390,6 +388,22 @@
       </div>
     </div>
 
+    <div class="settings-group-label">About</div>
+    <div class="accordion-section">
+      <button class="accordion-header" type="button" data-target="shortcutsContent">
+        <span>Keyboard shortcuts</span>
+        <span class="accordion-arrow">&#9656;</span>
+      </button>
+      <div class="accordion-content" id="shortcutsContent">
+        <ul class="shortcut-list">
+          <li><kbd>N</kbd> Add a task (jumps to the quick-add box)</li>
+          <li><kbd>/</kbd> Search</li>
+          <li><kbd>Esc</kbd> Close a window, or leave Select mode</li>
+          <li><kbd>Enter</kbd> Add the task or subtask you've typed (<kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line in notes)</li>
+        </ul>
+      </div>
+    </div>
+
     <div class="accordion-section">
       <button class="accordion-header" type="button" data-target="changelogContent">
         <span>Changelog</span>
@@ -397,6 +411,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.0</span> New <strong>Today</strong> tab with everything overdue, due today or starred (star a task from its window); the app opens on it when there's something there. New <strong>Waiting on</strong> field for tasks you're waiting on someone else for, with a Waiting filter. <strong>Select</strong> several tasks to complete, move, star or re-categorise them in one go. An <strong>Untouched 14d+</strong> filter, and on Mondays the summary lists tasks nobody has changed in 14+ days and reminds you to back up. Ticking a task done now offers <strong>Undo</strong>. Subtask progress (e.g. &#10003; 2/3) shows on each row. Dates use one style everywhere (22 Oct, Today, Tomorrow, Overdue 3 days). Import skips tasks you already have. The New Task and edit windows now match, with labelled fields, and Repeat can be changed after a task is created. The summary pop-up appears once a day. Settings are grouped, themes are trimmed to six well-tested ones (if you used a removed theme, you're switched to "Match my device"), and keyboard shortcuts are listed under About. Bigger tap targets and a search icon on phones; the login page matches the app.</li>
           <li><span class="changelog-version">v11.2</span> Cleaner layout: a slimmer header (the version number now lives here in Settings), task counts on the tabs, and the Due today / Overdue filters beside Sort by, so your tasks start much higher up the page. Overdue now has its own red and Due today its own blue, separate from the theme's main colour. Task names wrap instead of being cut off, and narrower windows use the compact two-line rows. Priority is shown once, as a small signal-bars icon, and high-priority task names are no longer coloured red. In the task pop-up the buttons stay pinned at the bottom, Delete sits apart on the left, and a single Done button replaces Save task / Close (changes save automatically, with a "Saved" note).</li>
           <li><span class="changelog-version">v11.1</span> The search box is now a small box under the settings icon. The "Details" button is gone; a "+ New Task" button beside the quick-add box opens the New Task window (anything already typed in the quick-add box carries over). Large lists now save to GitHub reliably when you switch away from the tab.</li>
           <li><span class="changelog-version">v11.0</span> Added real data encryption (Settings &rarr; Security &rarr; Data Encryption). Choose a passphrase and your whole list (tasks, archive, categories, assigned-to / assigned-by lists, reminder email and settings) is stored encrypted (AES-256-GCM, key derived with PBKDF2), both on this device and in your file on GitHub. Syncing between devices still merges changes task by task. You enter the passphrase when you open the list on each device. You can change the passphrase or turn encryption off from the same place, and other devices follow the change when they next sync. There is no way to recover your list if the passphrase is forgotten, and CSV exports / the Summary Report are not encrypted. If the list can't be decrypted, nothing is overwritten.</li>
