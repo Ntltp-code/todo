@@ -2451,9 +2451,16 @@ li.item.due-today .cell-due { color:var(--accent-blue); font-weight:700; }
 .quick-add { display:flex; gap:8px; margin:0 0 14px; }
 .quick-add input { flex:1; min-width:0; padding:11px 14px; border:1px solid var(--rule); border-radius:10px; background:var(--paper-dark); color:var(--ink); font:inherit; font-size:15px; }
 .quick-add input:focus { border-color:var(--accent-blue); outline:none; }
-.quick-add button { flex:none; padding:0 14px; border:1px solid var(--rule); border-radius:10px; background:transparent; color:var(--ink-muted); font:inherit; font-weight:700; font-size:12px; cursor:pointer; }
-.quick-add button:hover { color:var(--ink); border-color:var(--ink); }
-.new-task-btn { display:none !important; }
+.quick-add .new-task-btn { flex:none; width:auto; margin:0; padding:0 16px; border:1px solid var(--accent-blue); border-radius:10px; background:var(--accent-blue); color:var(--paper); font:inherit; font-weight:700; font-size:12px; letter-spacing:1px; text-transform:uppercase; white-space:nowrap; cursor:pointer; }
+.quick-add .new-task-btn:hover { filter:brightness(1.08); color:var(--paper); border-color:var(--accent-blue); border-style:solid; }
+
+/* small search box tucked under the settings icon */
+.header-search { position:absolute; top:36px; right:0; width:150px; height:26px; box-sizing:border-box; padding:3px 8px; border:1px solid var(--rule); border-radius:6px; background:var(--paper-dark); color:var(--ink); font:inherit; font-size:12px; }
+.header-search:focus { border-color:var(--accent-blue); outline:none; }
+@media (max-width: 640px) {
+  .header-search { width:96px; }
+  header { padding-right:104px; }   /* keep the centred title and date clear of the search box */
+}
 
 /* drag to reorder */
 li.item[draggable="true"] { cursor:grab; }
