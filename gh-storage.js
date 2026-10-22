@@ -36,7 +36,9 @@
       if (!c.token) throw new Error('no token');
       var body = { message: 'Update ' + path, content: b64e(JSON.stringify(obj, null, 1)), branch: c.branch };
       if (sha) body.sha = sha;
-      var r = await fetch(url(path, c), { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json' }, hdr(c)), body: JSON.stringify(body), keepalive: !!keepalive });
+      var text = JSON.stringify(body);
+      // browsers refuse keepalive requests over 64 KB ("Failed to fetch"), so big lists use a normal request
+      var r = await fetch(url(path, c), { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json' }, hdr(c)), body: text, keepalive: !!keepalive && text.length < 60000 });
       if (!r.ok) { var e = new Error('GitHub ' + r.status); e.status = r.status; throw e; }
       return (await r.json()).content.sha;
     }
