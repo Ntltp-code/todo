@@ -2440,11 +2440,11 @@
 .summary .due-today-row { display:none; }
 .summary-title { font-size:12px; }
 
-/* overdue vs due today */
-li.item.due-today { background:var(--due-highlight); box-shadow:inset 3px 0 0 var(--accent-blue); }
-li.item.overdue-row { background:color-mix(in srgb, var(--stamp) 10%, var(--paper)); box-shadow:inset 3px 0 0 var(--stamp); }
-li.item.overdue-row .cell-due { color:var(--stamp); font-weight:700; }
-li.item.due-today .cell-due { color:var(--accent-blue); font-weight:700; }
+/* overdue vs due today: their own colours, never the theme accent */
+li.item.due-today { background:color-mix(in srgb, var(--due) 9%, var(--paper)); box-shadow:inset 3px 0 0 var(--due); }
+li.item.overdue-row { background:color-mix(in srgb, var(--overdue) 10%, var(--paper)); box-shadow:inset 3px 0 0 var(--overdue); }
+li.item.overdue-row .cell-due, li.item .created.overdue { color:var(--overdue); font-weight:700; }
+li.item.due-today .cell-due { color:var(--due); font-weight:700; }
 .sleep-tag { white-space:nowrap; }
 
 /* quick add */
@@ -2459,7 +2459,6 @@ li.item.due-today .cell-due { color:var(--accent-blue); font-weight:700; }
 .header-search:focus { border-color:var(--accent-blue); outline:none; }
 @media (max-width: 640px) {
   .header-search { width:96px; }
-  header { padding-right:104px; }   /* keep the centred title and date clear of the search box */
 }
 
 /* drag to reorder */
@@ -2477,3 +2476,101 @@ li.item.drop-after { box-shadow:inset 0 -3px 0 var(--accent-blue); }
 .switch-link { color:inherit; margin-left:6px; text-decoration:underline; opacity:.8; }
 
 .theme-swatch-auto { background: linear-gradient(135deg, #FAF9F5 50%, #262624 50%); }
+
+/* ===== v11.2 layout ===== */
+/* status colours, separate from every theme's accent */
+:root { --overdue:#B3261E; --due:#1858A8; }
+body.theme-dark, body.theme-warmdark, body.theme-wb, body.theme-terminal { --overdue:#FF6B6B; --due:#6CA8FF; }
+
+/* slim header: title and date on the left, tools on the right */
+header { text-align:left; margin-bottom:14px; padding:2px 170px 10px 0; border-bottom-width:1px; }
+header h1 { font-size:24px; letter-spacing:1px; margin:0; }
+.title-row { justify-content:flex-start; }
+.title-logo { width:20px; height:28px; }
+.header-meta { margin:2px 0 0 !important; font-size:11px; letter-spacing:1px !important; text-transform:uppercase; color:var(--ink-muted); }
+.header-meta .version-label { margin:0 !important; opacity:1; font-size:inherit !important; }
+.header-meta .switch-link { margin-left:10px; }
+.lock-btn { left:auto; right:58px; }
+.settings-version { font-size:11px; font-weight:600; letter-spacing:0; text-transform:none; color:var(--ink-muted); margin-left:6px; }
+
+/* less empty space above the sheet */
+@media (min-width: 641px) {
+  body { padding-top:20px; }
+  .sheet { padding-top:18px; }
+}
+
+/* tabs (with counts) on the left, sort and the status filters on the right, one row */
+.tabs-bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; margin-bottom:12px; border-bottom:1px solid var(--rule); }
+.tabs-bar .tabs { margin:0; border-bottom:0; flex:0 1 auto; }
+.tabs-bar .tabs .tab { flex:0 0 auto; padding:8px 14px 10px; }
+.tabs-bar .sort-row { margin:0 0 0 auto; padding-bottom:4px; }
+.tabs .tab.active .tab-count { background:var(--accent-blue); color:var(--paper); }
+
+.tab-count { display:inline-block; min-width:18px; margin-left:4px; padding:0 6px; border-radius:999px; background:var(--paper-dark); color:var(--ink-muted); font-size:11px; line-height:18px; letter-spacing:0; }
+
+/* sort and the two status filters */
+.sort-row { flex-wrap:wrap; row-gap:8px; }
+.toolbar-chips { margin-left:8px; display:flex; gap:6px; }
+.toolbar-chips .filter-trigger { font:inherit; font-size:12px; font-weight:700; padding:4px 11px; border:1px solid var(--rule); border-radius:999px; background:transparent; color:var(--ink-muted); cursor:pointer; animation:none; }
+.toolbar-chips .filter-trigger:hover { text-decoration:none; border-color:currentColor; }
+.toolbar-chips .chip-due.flash { color:var(--due); border-color:var(--due); }
+.toolbar-chips .chip-overdue.flash { color:var(--overdue); border-color:var(--overdue); }
+.toolbar-chips .chip-due.filter-active { background:var(--due); border-color:var(--due); color:#fff !important; }
+.toolbar-chips .chip-overdue.filter-active { background:var(--overdue); border-color:var(--overdue); color:#fff !important; }
+.toolbar-chips .filter-trigger.filter-active span { color:#fff !important; }
+#dueTodayStat.flash, #overdueStat.flash, #dueTodayStat.flash #dueTodayCount, #overdueStat.flash #overdueCount { animation:none; }
+
+/* task names wrap (up to two lines) instead of being cut off; red is only for overdue */
+li.item .task-text { white-space:normal; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+li.item .task-text.high-priority { color:inherit; }
+
+/* priority as signal bars in a narrow last column */
+.list-header, li.item .row { grid-template-columns:18px 1fr 105px 150px 95px 24px; }
+.list-header.grid-done, .list-header.grid-pending, li.item .row.grid-done, li.item .row.grid-pending { grid-template-columns:18px 1fr 105px 150px 95px 80px 24px; }
+.priority-bars { display:inline-flex; align-items:flex-end; gap:2px; height:14px; justify-self:end; }
+.priority-bars i { display:block; width:4px; border-radius:1px; background:var(--rule); }
+.priority-bars i:nth-child(1) { height:5px; }
+.priority-bars i:nth-child(2) { height:9px; }
+.priority-bars i:nth-child(3) { height:14px; }
+.priority-bars.low i:nth-child(1),
+.priority-bars.medium i:nth-child(-n+2),
+.priority-bars.high i { background:var(--ink); }
+li.item.done .priority-bars i { background:var(--rule); }
+
+/* narrower windows: compact two-line rows (same as phones) instead of squeezed columns */
+@media (max-width: 1000px) {
+  .list-header { display:none !important; }
+  li.item .row, li.item .row.grid-done, li.item .row.grid-pending { display:flex; flex-wrap:wrap; align-items:center; column-gap:8px; row-gap:4px; }
+  li.item .row .box { flex:0 0 18px; order:1; }
+  li.item .row .task-text { flex:1 1 calc(100% - 80px); min-width:0; order:2; }
+  li.item .row .priority-bars { order:3; flex:0 0 auto; }
+  li.item .row .cell { order:4; flex:0 0 auto; max-width:48%; }
+  li.item .row .cell:empty { display:none; }
+  li.item .row .cell:first-of-type { margin-left:26px; }
+}
+
+/* task pop-up: buttons pinned below the scrolling body */
+.task-edit-footer { flex:none; border-top:1px solid var(--rule); background:var(--paper); padding:12px 24px; }
+.task-edit-footer .notes-footer { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:0; }
+.task-edit-footer .notes-footer > button, .task-edit-footer .notes-footer > input { flex:none; width:auto; height:32px; padding:0 12px; }
+.task-edit-footer .footer-spacer { flex:1 1 0; }
+.task-edit-footer .snooze-info { flex-basis:100%; text-align:left; }
+.task-edit-footer .remove:not(.confirming) { border-color:transparent; color:var(--ink-muted); padding:0 4px; }
+.task-edit-footer .remove:not(.confirming):hover { background:none; color:var(--overdue); text-decoration:underline; }
+.task-edit-footer .save-task { background:var(--accent-blue); border-color:var(--accent-blue); color:var(--paper); min-width:96px; }
+.task-edit-footer .save-task:hover { background:var(--accent-blue); color:var(--paper); filter:brightness(1.08); }
+.saved-note { font-size:11px; color:var(--ink-muted); white-space:nowrap; }
+.saved-note.just-saved { color:var(--check); font-weight:700; }
+@media (max-width: 640px) {
+  header { padding-right:110px; }
+  .tabs-bar .tabs { flex:1 1 100%; }
+  .tabs-bar .tabs .tab { flex:1 1 0; padding:8px 4px 10px; }
+  .tabs-bar .sort-row { margin-left:0; width:100%; }
+  .toolbar-chips { margin-left:auto; }
+  .task-edit-footer { padding:10px 12px; }
+  .task-edit-footer .notes-footer { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .task-edit-footer .notes-footer > button, .task-edit-footer .notes-footer > input { width:100%; min-width:0; }
+  .task-edit-footer .footer-spacer { display:none; }
+  .task-edit-footer .snooze-info { grid-column:1 / -1; }
+  .task-edit-footer .remove:not(.confirming) { justify-content:flex-start; }
+}

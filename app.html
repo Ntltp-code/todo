@@ -21,7 +21,7 @@
   <div class="sheet">
     <header>
       <button id="lockBtn" class="lock-btn" aria-label="Lock" type="button" style="display:none;">&#128274;</button>
-      <button id="settingsBtn" class="settings-btn" aria-label="Manage categories" type="button">&#9881;</button>
+      <button id="settingsBtn" class="settings-btn" aria-label="Settings" type="button">&#9881;</button>
       <input type="search" id="searchInput" class="header-search" placeholder="Search..." autocomplete="off" aria-label="Search tasks, categories, people, notes">
 
       <h1 class="title-row">
@@ -37,25 +37,14 @@
         <span>To-do</span>
         <span class="app-label" id="appLabelHeader">Work</span>
       </h1>
-      <p id="dateLabel">today</p>
-      <p class="version-label">v11.1</p>
+      <p class="header-meta"><span id="dateLabel">today</span><span class="version-label"></span></p>
     </header>
 
-    <p class="due-today-top" id="dueTodayTop">
-      <span class="filter-trigger" id="dueTodayTopTrigger">Due today: <span id="dueTodayTopCount">0</span></span>
-      <span class="filter-trigger" id="pendingTopTrigger">Pending: <span id="pendingTopCount">0</span></span>
-      <span class="filter-trigger" id="overdueTopTrigger">Overdue: <span id="overdueTopCount">0</span></span>
-    </p>
-
+    <div class="tabs-bar">
     <div class="tabs" role="tablist">
-      <button class="tab active" id="tabActive" type="button" role="tab" aria-selected="true">To-do</button>
-      <button class="tab" id="tabPending" type="button" role="tab" aria-selected="false">Pending</button>
-      <button class="tab" id="tabDone" type="button" role="tab" aria-selected="false">Completed</button>
-    </div>
-
-    <div class="quick-add">
-      <input type="text" id="quickAdd" placeholder="Add a task and press Enter..." maxlength="280" autocomplete="off" aria-label="Quick add a task">
-      <button class="new-task-btn" id="newTaskBtn" type="button">+ New Task</button>
+      <button class="tab active" id="tabActive" type="button" role="tab" aria-selected="true">To-do <span class="tab-count" id="tabActiveCount">0</span></button>
+      <button class="tab" id="tabPending" type="button" role="tab" aria-selected="false">Pending <span class="tab-count" id="pendingTopCount">0</span></button>
+      <button class="tab" id="tabDone" type="button" role="tab" aria-selected="false">Completed <span class="tab-count" id="tabDoneCount">0</span></button>
     </div>
 
     <div class="sort-row">
@@ -67,6 +56,16 @@
         <option value="assignee">Assigned To</option>
         <option value="name">Task Name</option>
       </select>
+      <span class="toolbar-chips">
+        <button type="button" class="filter-trigger chip-due" id="dueTodayTopTrigger">Due today <span id="dueTodayTopCount">0</span></button>
+        <button type="button" class="filter-trigger chip-overdue" id="overdueTopTrigger">Overdue <span id="overdueTopCount">0</span></button>
+      </span>
+    </div>
+    </div>
+
+    <div class="quick-add">
+      <input type="text" id="quickAdd" placeholder="Add a task and press Enter..." maxlength="280" autocomplete="off" aria-label="Quick add a task">
+      <button class="new-task-btn" id="newTaskBtn" type="button">+ New Task</button>
     </div>
 
     <div class="filter-indicator" id="filterIndicator" style="display:none;">
@@ -119,6 +118,7 @@
           <button id="taskEditClose" class="new-task-window-close" type="button" aria-label="Close">&#10005;</button>
         </div>
         <div class="task-edit-body" id="taskEditBody"></div>
+        <div class="task-edit-footer" id="taskEditFooter"></div>
       </div>
     </div>
 
@@ -130,7 +130,7 @@
       <span class="lh-due">Due</span>
       <span class="lh-completed" id="lhCompleted">Date Completed</span>
       <span class="lh-sleep" id="lhSleep">Sleeping Until</span>
-      <span class="lh-priority">Priority</span>
+      <span class="lh-priority" title="Priority" aria-label="Priority"></span>
     </div>
 
     <ul class="list" id="list"></ul>
@@ -177,7 +177,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings</h2>
+      <h2>Settings <span class="settings-version">v11.2</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -397,6 +397,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v11.2</span> Cleaner layout: a slimmer header (the version number now lives here in Settings), task counts on the tabs, and the Due today / Overdue filters beside Sort by, so your tasks start much higher up the page. Overdue now has its own red and Due today its own blue, separate from the theme's main colour. Task names wrap instead of being cut off, and narrower windows use the compact two-line rows. Priority is shown once, as a small signal-bars icon, and high-priority task names are no longer coloured red. In the task pop-up the buttons stay pinned at the bottom, Delete sits apart on the left, and a single Done button replaces Save task / Close (changes save automatically, with a "Saved" note).</li>
           <li><span class="changelog-version">v11.1</span> The search box is now a small box under the settings icon. The "Details" button is gone; a "+ New Task" button beside the quick-add box opens the New Task window (anything already typed in the quick-add box carries over). Large lists now save to GitHub reliably when you switch away from the tab.</li>
           <li><span class="changelog-version">v11.0</span> Added real data encryption (Settings &rarr; Security &rarr; Data Encryption). Choose a passphrase and your whole list (tasks, archive, categories, assigned-to / assigned-by lists, reminder email and settings) is stored encrypted (AES-256-GCM, key derived with PBKDF2), both on this device and in your file on GitHub. Syncing between devices still merges changes task by task. You enter the passphrase when you open the list on each device. You can change the passphrase or turn encryption off from the same place, and other devices follow the change when they next sync. There is no way to recover your list if the passphrase is forgotten, and CSV exports / the Summary Report are not encrypted. If the list can't be decrypted, nothing is overwritten.</li>
           <li><span class="changelog-version">v10.3</span> In the task pop-up, the buttons at the bottom (Delete task, Move to Pending, Sleep 1 Week, sleep-until date, Save task, Close) are laid out in an even grid of three per row (two on phones), stretched to fill the width of the window.</li>

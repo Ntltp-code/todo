@@ -22,6 +22,7 @@
   const taskEditOverlay = document.getElementById('taskEditOverlay');
   const taskEditBody = document.getElementById('taskEditBody');
   const taskEditTitle = document.getElementById('taskEditTitle');
+  const taskEditFooter = document.getElementById('taskEditFooter');
   let lastEditedId = null;
   const sortSelect = document.getElementById('sortSelect');
   const repeatSelect = document.getElementById('repeatSelect');
@@ -592,6 +593,7 @@
       stampUpdated();
       await queuedStorageSet(STORAGE_KEY, JSON.stringify(todos));
       await queuedStorageSet(LOCAL_UPDATED_KEY, String(localDataUpdatedAt));
+      showSavedNote();
     } finally {
       saveInFlight = false;
       if (savePending) {
@@ -599,6 +601,20 @@
         save();
       }
     }
+  }
+
+  // the task pop-up's "Saved" note; the element is rebuilt on every render, so look it up each time
+  let savedNoteTimer = null;
+  function showSavedNote() {
+    const el = document.getElementById('savedNote');
+    if (!el) return;
+    el.textContent = '✓ Saved';
+    el.classList.add('just-saved');
+    clearTimeout(savedNoteTimer);
+    savedNoteTimer = setTimeout(() => {
+      const now = document.getElementById('savedNote');
+      if (now) { now.textContent = '✓ Changes save automatically'; now.classList.remove('just-saved'); }
+    }, 2000);
   }
 
   function debounce(fn, delay) {
@@ -636,6 +652,7 @@
     listEl.innerHTML = '';
     const prevEditScroll = taskEditBody.scrollTop;
     taskEditBody.innerHTML = '';
+    taskEditFooter.innerHTML = '';
     let editingItem = null;
 
     const priorityOrder = { high: 0, medium: 1, low: 2 };
@@ -793,10 +810,14 @@
           dueCell.textContent = isOverdue ? 'Overdue' : formatDate(item.dueDate);
         }
 
+        // signal bars (3 = high, 2 = medium, 1 = low), so priority doesn't compete with the overdue red
         const priorityTag = document.createElement('span');
         const priority = item.priority || 'medium';
-        priorityTag.className = 'priority-tag ' + priority;
-        priorityTag.textContent = priority;
+        priorityTag.className = 'priority-bars ' + priority;
+        priorityTag.title = priority.charAt(0).toUpperCase() + priority.slice(1) + ' priority';
+        priorityTag.setAttribute('role', 'img');
+        priorityTag.setAttribute('aria-label', priorityTag.title);
+        priorityTag.innerHTML = '<i></i><i></i><i></i>';
 
         const stamp = document.createElement('div');
         stamp.className = 'stamp';
@@ -1152,7 +1173,7 @@
           entryTypeRow.appendChild(noteTypeBtn);
 
           const addSubtaskInput = document.createElement('textarea');
-          addSubtaskInput.placeholder = 'Add a subtask or note... (Enter to add, Shift+Enter for a new line, or Save task)';
+          addSubtaskInput.placeholder = 'Add a subtask or note... (Enter to add, Shift+Enter for a new line, or Done)';
           addSubtaskInput.className = 'add-subtask-input';
           addSubtaskInput.maxLength = 5000;
           addSubtaskInput.rows = 4;
@@ -1218,10 +1239,12 @@
             });
           }
 
-          const saveTaskBtn = document.createElement('button');
-          saveTaskBtn.className = 'save-task';
-          saveTaskBtn.textContent = 'Save task';
-          saveTaskBtn.addEventListener('click', () => {
+          // edits save as you go, so one Done button: keep any typed subtask/note, then close
+          const doneTaskBtn = document.createElement('button');
+          doneTaskBtn.type = 'button';
+          doneTaskBtn.className = 'save-task';
+          doneTaskBtn.textContent = 'Done';
+          doneTaskBtn.addEventListener('click', () => {
             const pendingSubtask = addSubtaskInput.value.trim();
             if (pendingSubtask) {
               const entryType = addEntryTypeByItem[item.id] || 'subtask';
@@ -1230,16 +1253,17 @@
               delete subtaskDrafts[item.id];
             }
             save();
+            expandedIds.clear();
             render();
           });
 
-          const closeTaskBtn = document.createElement('button');
-          closeTaskBtn.type = 'button';
-          closeTaskBtn.className = 'close-task';
-          closeTaskBtn.textContent = 'Close';
-          closeTaskBtn.addEventListener('click', () => {
-            toggleExpanded(item.id);
-          });
+          const savedNote = document.createElement('span');
+          savedNote.className = 'saved-note';
+          savedNote.id = 'savedNote';
+          savedNote.textContent = '✓ Changes save automatically';
+
+          const spacer = document.createElement('span');
+          spacer.className = 'footer-spacer';
 
           let pendingToggleBtn = null;
           let markCompleteBtn = null;
@@ -1302,22 +1326,24 @@
             }
           }
 
+          // pinned footer: Delete apart on the left, task actions in the middle, Done on the right
+          if (snoozeInfo) panelFooter.appendChild(snoozeInfo);
           panelFooter.appendChild(remove);
           if (cancelTaskDeleteBtn) panelFooter.appendChild(cancelTaskDeleteBtn);
+          panelFooter.appendChild(spacer);
           if (pendingToggleBtn) panelFooter.appendChild(pendingToggleBtn);
           if (sleep1WeekBtn) panelFooter.appendChild(sleep1WeekBtn);
           if (sleepUntilInput) panelFooter.appendChild(sleepUntilInput);
           if (markCompleteBtn) panelFooter.appendChild(markCompleteBtn);
-          if (snoozeInfo) panelFooter.appendChild(snoozeInfo);
-          panelFooter.appendChild(saveTaskBtn);
-          panelFooter.appendChild(closeTaskBtn);
+          panelFooter.appendChild(savedNote);
+          panelFooter.appendChild(doneTaskBtn);
 
           panel.appendChild(editFields);
           panel.appendChild(subtaskListTitle);
           panel.appendChild(subtaskList);
           panel.appendChild(addSubtaskRow);
-          panel.appendChild(panelFooter);
           taskEditBody.appendChild(panel);
+          taskEditFooter.appendChild(panelFooter);
           editingItem = item;
           li.classList.add('editing-row');
         }
@@ -1374,6 +1400,8 @@
     document.getElementById('overdueTopCount').textContent = overdueCount;
     document.getElementById('pendingSummaryCount').textContent = pendingCount;
     document.getElementById('pendingTopCount').textContent = pendingCount;
+    document.getElementById('tabActiveCount').textContent = openTasks.length - pendingCount;
+    document.getElementById('tabDoneCount').textContent = todos.length - openTasks.length;
 
     document.getElementById('dueTodayStat').classList.toggle('flash', dueTodayCount > 0);
     document.getElementById('overdueStat').classList.toggle('flash', overdueCount > 0);
@@ -2230,7 +2258,6 @@
   document.getElementById('dueTodayTopTrigger').addEventListener('click', () => toggleFilter('dueToday'));
   document.getElementById('overdueTopTrigger').addEventListener('click', () => toggleFilter('overdue'));
   document.getElementById('pendingStat').addEventListener('click', () => setPage('pending'));
-  document.getElementById('pendingTopTrigger').addEventListener('click', () => setPage('pending'));
   document.getElementById('clearFilterBtn').addEventListener('click', () => {
     filterMode = null;
     render();
