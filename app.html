@@ -83,27 +83,27 @@
           <button id="newTaskWindowClose" class="new-task-window-close" type="button" aria-label="Close">&#10005;</button>
         </div>
         <div class="add-row" id="addRow">
-          <label class="field"><span class="field-label">Task</span>
-            <input type="text" id="newItem" placeholder="What needs doing?" maxlength="280" autocomplete="off"></label>
+          <div class="field"><label class="field-label" for="newItem">Task</label>
+            <input type="text" id="newItem" placeholder="What needs doing?" maxlength="280" autocomplete="off"></div>
           <div class="edit-meta-row">
-            <label class="field"><span class="field-label">Due date</span>
-              <input type="date" id="dueDateInput"></label>
-            <label class="field"><span class="field-label">Priority</span>
+            <div class="field"><label class="field-label" for="dueDateInput">Due date</label>
+              <input type="date" id="dueDateInput"></div>
+            <div class="field"><label class="field-label" for="prioritySelect">Priority</label>
               <select id="prioritySelect">
                 <option value="high">High</option>
                 <option value="medium" selected>Medium</option>
                 <option value="low">Low</option>
-              </select></label>
-            <label class="field"><span class="field-label">Category</span>
-              <select id="categorySelect"></select></label>
-            <label class="field"><span class="field-label">Repeat</span>
+              </select></div>
+            <div class="field"><label class="field-label" for="categorySelect">Category</label>
+              <select id="categorySelect"></select></div>
+            <div class="field"><label class="field-label" for="repeatSelect">Repeat</label>
               <select id="repeatSelect" title="Repeating tasks need a due date">
                 <option value="">No repeat</option>
                 <option value="daily">Daily</option>
                 <option value="weekdays">Weekdays</option>
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
-              </select></label>
+              </select></div>
           </div>
           <div class="assignee-field">
             <div class="assignee-field-label">Assigned to</div>
@@ -197,7 +197,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.9</span></h2>
+      <h2>Settings <span class="settings-version">v12.10</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -411,6 +411,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.10</span> Fixed the calendar not appearing when picking a due date or a sleep-until date. Clicking anywhere in a date box now opens the calendar, not just the small calendar icon.</li>
           <li><span class="changelog-version">v12.9</span> Removed the "Waiting on" field from the New Task and edit windows, along with its &#9203; tags and the Waiting filter. Any names already entered are kept in your data and CSV exports, just no longer shown.</li>
           <li><span class="changelog-version">v12.8</span> The page is a little narrower on big screens (up to 1250px). The Today pop-up that appears when you open the app is bigger, with larger text. A small version label now sits under the date.</li>
           <li><span class="changelog-version">v12.7</span> The page can now be wider on big screens (up to 1440px, previously 1100px). The "Add a task and press Enter" box is gone; a bigger, centred "+ New Task" button opens the New Task window, and pressing N does the same.</li>

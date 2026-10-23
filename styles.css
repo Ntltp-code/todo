@@ -2567,3 +2567,7 @@ header p.header-version { margin:4px 0 0; font-size:10px; letter-spacing:1px; te
 .due-summary-modal .due-summary-date { font-size:14px; }
 .due-summary-modal .due-summary-section { margin-bottom:22px; }
 .due-summary-modal .due-summary-actions button { padding:13px; font-size:13px; }
+
+/* ===== v12.10: the whole date box opens the calendar ===== */
+input[type="date"] { cursor:pointer; }
+input[type="date"]::-webkit-calendar-picker-indicator { cursor:pointer; }
