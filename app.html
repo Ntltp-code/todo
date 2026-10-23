@@ -61,13 +61,11 @@
       <span class="toolbar-chips">
         <button type="button" class="filter-trigger chip-due" id="dueTodayTopTrigger">Due today <span id="dueTodayTopCount">0</span></button>
         <button type="button" class="filter-trigger chip-overdue" id="overdueTopTrigger">Overdue <span id="overdueTopCount">0</span></button>
-        <button type="button" class="filter-trigger chip-neutral" id="waitingTrigger" title="Tasks waiting on someone else">&#9203; Waiting <span id="waitingCount">0</span></button>
         <button type="button" class="filter-trigger chip-neutral" id="staleTrigger" title="Open tasks nobody has changed in 14+ days">Untouched 14d+ <span id="staleCount">0</span></button>
       </span>
       <button type="button" class="select-btn" id="selectBtn" aria-pressed="false">Select</button>
     </div>
     </div>
-    <datalist id="peopleList"></datalist>
 
     <div class="quick-add">
       <button class="new-task-btn" id="newTaskBtn" type="button">+ New Task</button>
@@ -106,8 +104,6 @@
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
               </select></label>
-            <label class="field"><span class="field-label">Waiting on</span>
-              <input type="text" id="waitingOnInput" list="peopleList" placeholder="Nobody" maxlength="60" autocomplete="off"></label>
           </div>
           <div class="assignee-field">
             <div class="assignee-field-label">Assigned to</div>
@@ -201,7 +197,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.8</span></h2>
+      <h2>Settings <span class="settings-version">v12.9</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -415,6 +411,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.9</span> Removed the "Waiting on" field from the New Task and edit windows, along with its &#9203; tags and the Waiting filter. Any names already entered are kept in your data and CSV exports, just no longer shown.</li>
           <li><span class="changelog-version">v12.8</span> The page is a little narrower on big screens (up to 1250px). The Today pop-up that appears when you open the app is bigger, with larger text. A small version label now sits under the date.</li>
           <li><span class="changelog-version">v12.7</span> The page can now be wider on big screens (up to 1440px, previously 1100px). The "Add a task and press Enter" box is gone; a bigger, centred "+ New Task" button opens the New Task window, and pressing N does the same.</li>
           <li><span class="changelog-version">v12.6</span> The HIGH / MEDIUM / LOW priority tags are back on each task, replacing the signal-bars icon, with the Priority column heading restored.</li>
