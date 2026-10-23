@@ -2571,3 +2571,15 @@ header p.header-version { margin:4px 0 0; font-size:10px; letter-spacing:1px; te
 /* ===== v12.10: the whole date box opens the calendar ===== */
 input[type="date"] { cursor:pointer; }
 input[type="date"]::-webkit-calendar-picker-indicator { cursor:pointer; }
+
+/* ===== v12.11: Save (stays open) beside Done (saves and closes) ===== */
+.task-edit-footer .save-only-task { flex:none; height:32px; min-width:96px; padding:0 12px; border:1px solid var(--accent-blue); border-radius:2px; background:transparent; color:var(--accent-blue); font-family:inherit; font-weight:700; font-size:12px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+.task-edit-footer .save-only-task:hover { background:color-mix(in srgb, var(--accent-blue) 10%, transparent); }
+body.theme-warm .task-edit-footer .save-only-task, body.theme-warmdark .task-edit-footer .save-only-task { border-radius:10px; }
+@media (max-width: 640px) {
+  .task-edit-footer .save-only-task { width:100%; min-width:0; }
+  .task-edit-footer .saved-note { grid-column:1 / -1; }
+}
+/* the small "saved" note sits on its own line above the buttons, so Save and Done stay side by side */
+.task-edit-footer .saved-note { order:-1; flex-basis:100%; text-align:right; margin-bottom:-2px; }
+@media (max-width: 640px) { .task-edit-footer .saved-note { order:0; text-align:left; } }
