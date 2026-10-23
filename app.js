@@ -60,7 +60,9 @@
   const unlockBtn = document.getElementById('unlockBtn');
   const unlockError = document.getElementById('unlockError');
 
-  dateLabel.textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+  // the small version label under the date mirrors the one in Settings, so there's one place to change it
+  document.getElementById('headerVersion').textContent = document.querySelector('.settings-version').textContent;
+  dateLabel.textContent =new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 
   let todos = [];
   let categories = ['Work', 'Personal', 'Errands'];
