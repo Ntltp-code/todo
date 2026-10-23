@@ -80,7 +80,7 @@
 
   .pad {
     width: 100%;
-    max-width: min(1100px, 92vw);
+    max-width: min(1440px, 95vw);
     background: var(--paper);
     box-shadow: 0 1px 0 var(--paper-dark), 0 12px 24px -8px rgba(0,0,0,0.25);
     position: relative;
@@ -2307,10 +2307,8 @@ li.item.due-today .cell-due { color:var(--due); font-weight:700; }
 .sleep-tag { white-space:nowrap; }
 
 /* quick add */
-.quick-add { display:flex; gap:8px; margin:0 0 14px; }
-.quick-add input { flex:1; min-width:0; padding:11px 14px; border:1px solid var(--rule); border-radius:10px; background:var(--paper-dark); color:var(--ink); font:inherit; font-size:15px; }
-.quick-add input:focus { border-color:var(--accent-blue); outline:none; }
-.quick-add .new-task-btn { flex:none; width:auto; margin:0; padding:0 16px; border:1px solid var(--accent-blue); border-radius:10px; background:var(--accent-blue); color:var(--paper); font:inherit; font-weight:700; font-size:12px; letter-spacing:1px; text-transform:uppercase; white-space:nowrap; cursor:pointer; }
+.quick-add { display:flex; justify-content:center; margin:6px 0 18px; }
+.quick-add .new-task-btn { flex:none; width:min(100%, 360px); margin:0; padding:15px 32px; border:1px solid var(--accent-blue); border-radius:12px; background:var(--accent-blue); color:var(--paper); font:inherit; font-weight:800; font-size:16px; letter-spacing:1.5px; text-transform:uppercase; white-space:nowrap; cursor:pointer; box-shadow:0 6px 16px -8px rgba(0,0,0,.45); }
 .quick-add .new-task-btn:hover { filter:brightness(1.08); color:var(--paper); border-color:var(--accent-blue); border-style:solid; }
 
 /* small search box tucked under the settings icon */
