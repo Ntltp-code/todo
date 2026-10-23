@@ -1084,13 +1084,16 @@
             render();
           });
 
-          // every field gets a visible label
+          // every field gets a visible label. The wrapper is a div, not a <label>: some browsers turn a
+          // click inside a label-wrapped date box into two clicks, opening and instantly closing the calendar.
           const field = (labelText, el) => {
-            const wrap = document.createElement('label');
+            const wrap = document.createElement('div');
             wrap.className = 'field';
-            const cap = document.createElement('span');
+            const cap = document.createElement('label');
             cap.className = 'field-label';
             cap.textContent = labelText;
+            if (!el.id) el.id = 'f' + uid();
+            cap.htmlFor = el.id;
             wrap.appendChild(cap);
             wrap.appendChild(el);
             return wrap;
@@ -2455,6 +2458,13 @@
       newTaskBtn.click();
     }
     else if (e.key === '/') { e.preventDefault(); searchInput.focus(); }
+  });
+
+  // a click anywhere in a date box opens the calendar, not just a click on its small icon
+  document.addEventListener('click', e => {
+    const el = e.target;
+    if (!(el instanceof HTMLInputElement) || el.type !== 'date' || el.disabled || typeof el.showPicker !== 'function') return;
+    try { el.showPicker(); } catch (err) { /* already open, or not allowed here: the browser's own behaviour applies */ }
   });
 
   let lastOutsideFocus = null;
