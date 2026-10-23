@@ -27,7 +27,6 @@
   let lastEditedId = null;
   const sortSelect = document.getElementById('sortSelect');
   const repeatSelect = document.getElementById('repeatSelect');
-  const waitingOnInput = document.getElementById('waitingOnInput');
   let selectMode = false;
   const selectedIds = new Set();
   const searchInput = document.getElementById('searchInput');
@@ -677,17 +676,7 @@
     return null;
   }
 
-  // suggestions for the "Waiting on" fields: everyone in the Assigned To / By lists
-  function refreshPeopleList() {
-    const dl = document.getElementById('peopleList');
-    const people = Array.from(new Set(assignees.concat(assignedByOptions))).sort();
-    if (dl.dataset.people === people.join('|')) return;
-    dl.dataset.people = people.join('|');
-    dl.innerHTML = people.map(p => '<option value="' + escapeHtml(p) + '"></option>').join('');
-  }
-
   function render() {
-    refreshPeopleList();
     listEl.innerHTML = '';
     const prevEditScroll = taskEditBody.scrollTop;
     taskEditBody.innerHTML = '';
@@ -729,7 +718,6 @@
         // task any less overdue, so it shouldn't be hidden from this view.
         if (page === 'active' && filterMode === 'dueToday') return !t.done && t.dueDate === todayStr;
         if (page === 'active' && filterMode === 'overdue') return !t.done && isPastDue(t.dueDate);
-        if (page === 'active' && filterMode === 'waiting') return !t.done && !!t.waitingOn;
         if (page === 'active' && filterMode === 'stale') return isStale(t);
         if (page === 'today') return isTodayTask(t);
         if (page === 'done') return t.done;
@@ -738,7 +726,7 @@
       })
       .filter(t => {
         if (!searchTerm) return true;
-        const hay = [t.text, t.category, (t.assignees || []).join(' '), t.assignedTo, t.assignedBy, t.waitingOn,
+        const hay = [t.text, t.category, (t.assignees || []).join(' '), t.assignedTo, t.assignedBy,
           (t.subtasks || []).map(x => x.text).join(' ')].join(' ').toLowerCase();
         return searchTerm.split(/\s+/).every(w => hay.includes(w));
       })
@@ -748,7 +736,7 @@
     const filterIndicatorText = document.getElementById('filterIndicatorText');
     if (page === 'active' && filterMode) {
       filterIndicator.style.display = 'flex';
-      const filterNames = { dueToday: 'Due today', overdue: 'Overdue', waiting: 'Waiting on someone', stale: 'Not touched in ' + STALE_DAYS + '+ days' };
+      const filterNames = { dueToday: 'Due today', overdue: 'Overdue', stale: 'Not touched in ' + STALE_DAYS + '+ days' };
       filterIndicatorText.textContent = 'Showing: ' + filterNames[filterMode] + ' (' + visible.length + ')';
     } else {
       filterIndicator.style.display = 'none';
@@ -758,7 +746,6 @@
     document.getElementById('overdueStat').classList.toggle('filter-active', filterMode === 'overdue');
     document.getElementById('dueTodayTopTrigger').classList.toggle('filter-active', filterMode === 'dueToday');
     document.getElementById('overdueTopTrigger').classList.toggle('filter-active', filterMode === 'overdue');
-    document.getElementById('waitingTrigger').classList.toggle('filter-active', filterMode === 'waiting');
     document.getElementById('staleTrigger').classList.toggle('filter-active', filterMode === 'stale');
 
     listHeader.style.display = visible.length === 0 ? 'none' : 'grid';
@@ -845,14 +832,6 @@
           sleepTag.className = 'category-tag sleep-tag';
           sleepTag.textContent = item.snoozeUntil ? ('\u263E Asleep till ' + toUKDateShort(item.snoozeUntil)) : '\u23F8 Pending';
           categoryCell.appendChild(sleepTag);
-        }
-        // shown beside the name (not in the narrow category column) so it's never cut off
-        if (!item.done && item.waitingOn) {
-          const waitTag = document.createElement('span');
-          waitTag.className = 'waiting-tag';
-          waitTag.textContent = '\u23F3 ' + item.waitingOn;
-          waitTag.title = 'Waiting on ' + item.waitingOn;
-          taskText.appendChild(waitTag);
         }
         if (!item.done && !item.pending && item.wokeUp && (page === 'active' || page === 'today')) {
           const wokeTag = document.createElement('span');
@@ -1094,19 +1073,6 @@
             render();
           });
 
-          const editWaiting = document.createElement('input');
-          editWaiting.type = 'text';
-          editWaiting.className = 'edit-category edit-waiting';
-          editWaiting.maxLength = 60;
-          editWaiting.placeholder = 'Nobody';
-          editWaiting.value = item.waitingOn || '';
-          editWaiting.setAttribute('list', 'peopleList');
-          editWaiting.addEventListener('input', () => {
-            item.waitingOn = editWaiting.value.trim();
-            debouncedSave();
-          });
-          editWaiting.addEventListener('change', () => { save(); render(); });
-
           const starBtn = document.createElement('button');
           starBtn.type = 'button';
           starBtn.className = 'star-toggle' + (item.starred ? ' on' : '');
@@ -1134,7 +1100,6 @@
           editMetaRow.appendChild(field('Priority', editPriority));
           editMetaRow.appendChild(field('Category', editCategory));
           editMetaRow.appendChild(field('Repeat', editRepeat));
-          editMetaRow.appendChild(field('Waiting on', editWaiting));
 
           const nameRow = document.createElement('div');
           nameRow.className = 'edit-name-row';
@@ -1541,11 +1506,8 @@
     document.getElementById('tabActiveCount').textContent = openTasks.length - pendingCount;
     document.getElementById('tabDoneCount').textContent = todos.length - openTasks.length;
     document.getElementById('tabTodayCount').textContent = todos.filter(isTodayTask).length;
-    const waitingCount = openTasks.filter(t => t.waitingOn).length;
     const staleCount = todos.filter(isStale).length;
-    document.getElementById('waitingCount').textContent = waitingCount;
     document.getElementById('staleCount').textContent = staleCount;
-    document.getElementById('waitingTrigger').style.display = waitingCount || filterMode === 'waiting' ? '' : 'none';
     document.getElementById('staleTrigger').style.display = staleCount || filterMode === 'stale' ? '' : 'none';
 
     document.getElementById('dueTodayStat').classList.toggle('flash', dueTodayCount > 0);
@@ -1681,12 +1643,10 @@
     const assignedTo = taskAssignees[0] || '';
     const assignedBy = assignedBySelect.value || '';
     const repeat = dueDate ? (repeatSelect.value || '') : '';
-    const waitingOn = waitingOnInput.value.trim();
     // a new task added while looking at Today is starred, so it shows up there
     const starred = page === 'today';
-    todos.push({ id: uid(), text: value, done: false, createdAt: Date.now(), priority, dueDate, category, assignedTo, assignees: taskAssignees, assignedBy, repeat, waitingOn, starred });
+    todos.push({ id: uid(), text: value, done: false, createdAt: Date.now(), priority, dueDate, category, assignedTo, assignees: taskAssignees, assignedBy, repeat, starred });
     repeatSelect.value = '';
-    waitingOnInput.value = '';
     input.value = '';
     prioritySelect.value = 'medium';
     dueDateInput.value = '';
@@ -2552,7 +2512,6 @@
     dueDateInput.value = '';
     categorySelect.value = '';
     repeatSelect.value = '';
-    waitingOnInput.value = '';
     selectedAddAssignees = [];
     populateAssigneeChecklist();
     assignedBySelect.value = '';
@@ -2576,7 +2535,6 @@
   tabToday.addEventListener('click', () => setPage('today'));
   tabPending.addEventListener('click', () => setPage('pending'));
   tabDone.addEventListener('click', () => setPage('done'));
-  document.getElementById('waitingTrigger').addEventListener('click', () => toggleFilter('waiting'));
   document.getElementById('staleTrigger').addEventListener('click', () => toggleFilter('stale'));
 
   function populateCategorySelect() {

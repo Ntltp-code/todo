@@ -2447,12 +2447,11 @@ li.item .row .priority-tag { justify-self:start; text-align:center; }
 .star-toggle.on { color:#B7791F; border-color:#B7791F; }
 body.theme-dark .star-toggle.on, body.theme-warmdark .star-toggle.on { color:#F2C14E; border-color:#F2C14E; }
 
-/* row extras: star, subtask progress, waiting tag */
+/* row extras: star, subtask progress */
 .star-mark { color:#B7791F; }
 body.theme-dark .star-mark, body.theme-warmdark .star-mark { color:#F2C14E; }
 .subtask-progress { display:inline-block; margin-left:8px; padding:0 6px; border-radius:999px; background:var(--paper-dark); color:var(--ink-muted); font-size:11px; font-weight:700; line-height:18px; vertical-align:1px; white-space:nowrap; }
 .subtask-progress.all-done { color:var(--check); }
-.waiting-tag { display:inline-block; margin-left:8px; padding:0 6px; border:1px dashed var(--ink-muted); border-radius:999px; color:var(--ink-muted); font-size:11px; font-weight:700; line-height:16px; vertical-align:1px; white-space:nowrap; }
 
 /* the extra filter chips are neutral: they're not urgent */
 .toolbar-chips .chip-neutral.filter-active { background:var(--ink); border-color:var(--ink); color:var(--paper) !important; }
