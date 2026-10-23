@@ -2382,29 +2382,18 @@ body.theme-warm header h1, body.theme-warmdark header h1 { letter-spacing:3px; }
 li.item .task-text { white-space:normal; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
 li.item .task-text.high-priority { color:inherit; }
 
-/* priority as signal bars in a narrow last column */
-.list-header, li.item .row { grid-template-columns:18px 1fr 105px 150px 95px 24px; }
-.list-header.grid-done, .list-header.grid-pending, li.item .row.grid-done, li.item .row.grid-pending { grid-template-columns:18px 1fr 105px 150px 95px 80px 24px; }
-.priority-bars { display:inline-flex; align-items:flex-end; gap:2px; height:14px; justify-self:end; }
-.priority-bars i { display:block; width:4px; border-radius:1px; background:var(--rule); }
-.priority-bars i:nth-child(1) { height:5px; }
-.priority-bars i:nth-child(2) { height:9px; }
-.priority-bars i:nth-child(3) { height:14px; }
-.priority-bars.low i:nth-child(1),
-.priority-bars.medium i:nth-child(-n+2),
-.priority-bars.high i { background:var(--ink); }
-li.item.done .priority-bars i { background:var(--rule); }
-/* Terminal draws its lines in bright green, so unlit bars need their own dim green */
-body.theme-terminal .priority-bars i { background:#1F4F1F; }
-body.theme-terminal .priority-bars.low i:nth-child(1), body.theme-terminal .priority-bars.medium i:nth-child(-n+2), body.theme-terminal .priority-bars.high i { background:var(--ink); }
+/* priority tag (HIGH / MEDIUM / LOW) in the last column */
+.list-header, li.item .row { grid-template-columns:18px 1fr 105px 150px 95px 78px; }
+.list-header.grid-done, .list-header.grid-pending, li.item .row.grid-done, li.item .row.grid-pending { grid-template-columns:18px 1fr 105px 150px 95px 80px 78px; }
+li.item .row .priority-tag { justify-self:start; text-align:center; }
 
 /* narrower windows: compact two-line rows (same as phones) instead of squeezed columns */
 @media (max-width: 1000px) {
   .list-header { display:none !important; }
   li.item .row, li.item .row.grid-done, li.item .row.grid-pending { display:flex; flex-wrap:wrap; align-items:center; column-gap:8px; row-gap:4px; }
   li.item .row .box { flex:0 0 18px; order:1; }
-  li.item .row .task-text { flex:1 1 calc(100% - 80px); min-width:0; order:2; }
-  li.item .row .priority-bars { order:3; flex:0 0 auto; }
+  li.item .row .task-text { flex:1 1 calc(100% - 130px); min-width:0; order:2; }
+  li.item .row .priority-tag { order:3; flex:0 0 auto; }
   li.item .row .cell { order:4; flex:0 0 auto; max-width:48%; }
   li.item .row .cell:empty { display:none; }
   li.item .row .cell:first-of-type { margin-left:26px; }
