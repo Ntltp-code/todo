@@ -771,7 +771,7 @@
         : page === 'today'
         ? 'Nothing overdue, due today or starred. Star a task (☆ in its window) to add it here, or see the To-do tab for everything else.'
         : page === 'active'
-        ? (filterMode ? 'No tasks match this filter.' : 'Nothing on the list. Type above, or press N, to add a task.')
+        ? (filterMode ? 'No tasks match this filter.' : 'Nothing on the list. Click + New Task (or press N) to add one.')
         : page === 'pending'
           ? 'No pending tasks.'
           : 'No completed tasks yet.';
@@ -2422,21 +2422,6 @@
   });
 
 
-  // ---------- quick add ----------
-  const quickAdd = document.getElementById('quickAdd');
-  function quickAddTask() {
-    const value = quickAdd.value.trim();
-    if (!value) return;
-    todos.push({ id: uid(), text: value, done: false, createdAt: Date.now(), priority: 'medium', dueDate: '', category: '', assignedTo: '', assignees: [], assignedBy: '', repeat: '', starred: page === 'today' });
-    quickAdd.value = '';
-    render();
-    save();
-    showToast('Added.');
-  }
-  quickAdd.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); quickAddTask(); }
-  });
-
   // ---------- drag to reorder (within a group) ----------
   let dragId = null;
   function clearDropMarks() {
@@ -2505,7 +2490,7 @@
     if (e.key === 'n') {
       e.preventDefault();
       if (page !== 'active' && page !== 'today') setPage('active');
-      quickAdd.focus();
+      newTaskBtn.click();
     }
     else if (e.key === '/') { e.preventDefault(); searchInput.focus(); }
   });
@@ -2528,12 +2513,7 @@
     if (e.key === 'Enter') addItem();
   });
 
-  // opens the New Task window; anything already typed in the quick-add box carries over
   newTaskBtn.addEventListener('click', () => {
-    if (quickAdd.value.trim()) {
-      input.value = quickAdd.value;
-      quickAdd.value = '';
-    }
     addFormOpen = true;
     render();
     input.focus();
