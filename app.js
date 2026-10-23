@@ -273,7 +273,7 @@
   }
 
   // trimmed to six well-tested themes; anyone on a removed one falls back to 'auto'
-  const VALID_THEMES = ['auto', 'warm', 'warmdark', 'light', 'dark', 'bw'];
+  const VALID_THEMES = ['auto', 'warm', 'warmdark', 'light', 'dark', 'bw', 'terminal'];
 
   let themeSetting = 'auto';
   const darkQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
@@ -286,6 +286,9 @@
     themeSetting = theme;
     const shown = theme === 'auto' ? ((darkQuery && darkQuery.matches) ? 'warmdark' : 'warm') : theme;
     document.body.classList.remove('theme-warm', 'theme-warmdark', 'theme-dark', 'theme-colourful', 'theme-notebook', 'theme-forest', 'theme-ocean', 'theme-sunset', 'theme-slate', 'theme-bw', 'theme-wb', 'theme-terminal');
+    // phones tint their address bar with this; Terminal keeps it black
+    const themeColour = document.querySelector('meta[name="theme-color"]');
+    if (themeColour) themeColour.content = shown === 'terminal' ? '#000000' : '#C96442';
     if (shown !== 'light') {
       document.body.classList.add('theme-' + shown);
     }
