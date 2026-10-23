@@ -885,14 +885,10 @@
           dueCell.textContent = item.done ? formatDate(item.dueDate) : formatDue(item.dueDate);
         }
 
-        // signal bars (3 = high, 2 = medium, 1 = low), so priority doesn't compete with the overdue red
         const priorityTag = document.createElement('span');
         const priority = item.priority || 'medium';
-        priorityTag.className = 'priority-bars ' + priority;
-        priorityTag.title = priority.charAt(0).toUpperCase() + priority.slice(1) + ' priority';
-        priorityTag.setAttribute('role', 'img');
-        priorityTag.setAttribute('aria-label', priorityTag.title);
-        priorityTag.innerHTML = '<i></i><i></i><i></i>';
+        priorityTag.className = 'priority-tag ' + priority;
+        priorityTag.textContent = priority;
 
         const stamp = document.createElement('div');
         stamp.className = 'stamp';
