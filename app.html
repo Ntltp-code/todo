@@ -201,7 +201,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.1</span></h2>
+      <h2>Settings <span class="settings-version">v12.2</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -411,6 +411,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.2</span> The app now always opens on the To-do tab. Your Today list (overdue, due today and starred tasks) pops up each time you open it instead; tap a task in the pop-up to open it, or "Show Today tab" to jump there. On Mondays the pop-up also includes the untouched-tasks review and backup reminder, once.</li>
           <li><span class="changelog-version">v12.1</span> The To-do title and date are centred again. The search box under the settings icon no longer sits over the line beneath the header. Overdue tasks keep their red tint but lose the red stripe down the left edge. The "Switch user" link has been removed.</li>
           <li><span class="changelog-version">v12.0</span> New <strong>Today</strong> tab with everything overdue, due today or starred (star a task from its window); the app opens on it when there's something there. New <strong>Waiting on</strong> field for tasks you're waiting on someone else for, with a Waiting filter. <strong>Select</strong> several tasks to complete, move, star or re-categorise them in one go. An <strong>Untouched 14d+</strong> filter, and on Mondays the summary lists tasks nobody has changed in 14+ days and reminds you to back up. Ticking a task done now offers <strong>Undo</strong>. Subtask progress (e.g. &#10003; 2/3) shows on each row. Dates use one style everywhere (22 Oct, Today, Tomorrow, Overdue 3 days). Import skips tasks you already have. The New Task and edit windows now match, with labelled fields, and Repeat can be changed after a task is created. The summary pop-up appears once a day. Settings are grouped, themes are trimmed to six well-tested ones (if you used a removed theme, you're switched to "Match my device"), and keyboard shortcuts are listed under About. Bigger tap targets and a search icon on phones; the login page matches the app.</li>
           <li><span class="changelog-version">v11.2</span> Cleaner layout: a slimmer header (the version number now lives here in Settings), task counts on the tabs, and the Due today / Overdue filters beside Sort by, so your tasks start much higher up the page. Overdue now has its own red and Due today its own blue, separate from the theme's main colour. Task names wrap instead of being cut off, and narrower windows use the compact two-line rows. Priority is shown once, as a small signal-bars icon, and high-priority task names are no longer coloured red. In the task pop-up the buttons stay pinned at the bottom, Delete sits apart on the left, and a single Done button replaces Save task / Close (changes save automatically, with a "Saved" note).</li>
@@ -527,14 +528,17 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="dueSummaryOverlay" role="dialog" aria-modal="true" aria-label="Summary">
+<div class="modal-overlay" id="dueSummaryOverlay" role="dialog" aria-modal="true" aria-labelledby="dueSummaryHeading">
   <div class="modal due-summary-modal">
     <div class="modal-header">
-      <h2>This Week's Summary</h2>
+      <h2 id="dueSummaryHeading">Today <span class="due-summary-day" id="dueSummaryDay"></span></h2>
       <button id="closeDueSummaryBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
     <div id="dueSummaryBody"></div>
-    <button id="dueSummaryOkBtn" class="export-all-btn" type="button">Got it</button>
+    <div class="due-summary-actions">
+      <button id="dueSummaryTodayBtn" class="due-summary-secondary" type="button">Show Today tab</button>
+      <button id="dueSummaryOkBtn" class="export-all-btn" type="button">Got it</button>
+    </div>
   </div>
 </div>
 

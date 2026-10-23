@@ -2495,3 +2495,17 @@ kbd { display:inline-block; min-width:20px; padding:0 6px; border:1px solid var(
   .bulk-bar { left:12px; right:12px; transform:none; width:auto; bottom:12px; }
   .edit-name-row { flex-wrap:wrap; }
 }
+
+/* ===== v12.2: the Today pop-up on open ===== */
+.due-summary-day { font-size:12px; font-weight:600; letter-spacing:0; text-transform:none; color:var(--ink-muted); margin-left:6px; }
+.due-summary-section.overdue .due-summary-title { color:var(--overdue); }
+.due-summary-section.overdue .due-summary-date { color:var(--overdue); font-weight:700; }
+.due-summary-section.due .due-summary-title, .due-summary-section.due .due-summary-date { color:var(--due); }
+.due-summary-list li[data-id] { cursor:pointer; padding:7px 8px; margin:0 -8px; border-radius:6px; }
+.due-summary-list li[data-id]:hover, .due-summary-list li[data-id]:focus-visible { background:var(--paper-dark); outline:none; }
+.due-summary-date { text-transform:none; }
+.due-summary-actions { display:flex; gap:10px; margin-top:6px; }
+.due-summary-actions .export-all-btn { flex:1; }
+.due-summary-secondary { flex:1; padding:10px; border:1px solid var(--rule); background:transparent; color:var(--ink); font-family:inherit; font-weight:700; font-size:12px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; }
+.due-summary-secondary:hover { border-color:var(--ink); }
+body.theme-warm .due-summary-secondary, body.theme-warmdark .due-summary-secondary { border-radius:10px; }

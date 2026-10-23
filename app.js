@@ -585,8 +585,6 @@
     if (passwordHash && !encryptionOn()) {
       showLock();
     }
-    // open on Today when there's something on it, so the first screen is "what to do now"
-    if (todos.some(isTodayTask)) setPage('today');
     render();
     if (!passwordHash || encryptionOn()) {
       maybeShowDueSummary();
@@ -1601,8 +1599,8 @@
   function buildDueSummarySection(title, items, extraClass) {
     if (items.length === 0) return '';
     const rows = items.map(t =>
-      '<li><span class="due-summary-task">' + escapeHtml(t.text) + '</span>' +
-      '<span class="due-summary-date">' + escapeHtml(formatDate(t.dueDate)) + '</span></li>'
+      '<li data-id="' + escapeHtml(t.id) + '" tabindex="0" title="Open this task"><span class="due-summary-task">' + escapeHtml(t.text) + '</span>' +
+      '<span class="due-summary-date">' + escapeHtml(t.dueDate ? formatDue(t.dueDate) : '') + '</span></li>'
     ).join('');
     return '<div class="due-summary-section' + (extraClass ? ' ' + extraClass : '') + '">' +
       '<div class="due-summary-title">' + title + ' (' + items.length + ')</div>' +
@@ -1610,18 +1608,21 @@
       '</div>';
   }
 
-  // shown once a day; on Mondays it also lists tasks nobody has touched for a while, and nudges for a backup
+  // the Today list as a pop-up every time the app opens (the app itself opens on To-do).
+  // On Mondays, once, it also lists tasks nobody has touched for a while and nudges for a backup.
   function maybeShowDueSummary() {
     const todayStr = todayDateString();
-    const shownKey = 'todo_summary_shown_' + (new URLSearchParams(location.search).get('u') || '');
-    try { if (localStorage.getItem(shownKey) === todayStr) return; } catch (e) { /* storage unavailable: show it */ }
+    const mondayKey = 'todo_monday_review_' + (new URLSearchParams(location.search).get('u') || '');
+    let mondayShown = false;
+    try { mondayShown = localStorage.getItem(mondayKey) === todayStr; } catch (e) { /* storage unavailable: show it */ }
 
-    const { overdue, dueToday, dueThisWeek } = getDueSummaryData();
-    const isMonday = new Date().getDay() === 1;
+    const { overdue, dueToday } = getDueSummaryData();
+    const starred = todos.filter(t => !t.done && t.starred && !overdue.includes(t) && !dueToday.includes(t));
+    const isMonday = new Date().getDay() === 1 && !mondayShown;
     const stale = isMonday ? todos.filter(isStale) : [];
     const backupDays = lastExportAt ? Math.floor((Date.now() - lastExportAt) / 86400000) : null;
     const needsBackup = isMonday && (backupDays === null || backupDays > 30);
-    if (!overdue.length && !dueToday.length && !dueThisWeek.length && !stale.length && !needsBackup) return;
+    if (!overdue.length && !dueToday.length && !starred.length && !stale.length && !needsBackup) return;
 
     const staleSection = stale.length
       ? '<div class="due-summary-section"><div class="due-summary-title">Not touched in ' + STALE_DAYS + '+ days (' + stale.length + ')</div>' +
@@ -1639,15 +1640,35 @@
     const body = document.getElementById('dueSummaryBody');
     body.innerHTML =
       buildDueSummarySection('Overdue', overdue, 'overdue') +
-      buildDueSummarySection('Due Today', dueToday) +
-      buildDueSummarySection('Due This Week', dueThisWeek) +
+      buildDueSummarySection('Due today', dueToday, 'due') +
+      buildDueSummarySection('★ Starred', starred) +
       staleSection + backupSection;
     const exportNow = document.getElementById('summaryExportBtn');
     if (exportNow) exportNow.addEventListener('click', () => exportAllBtn.click());
 
-    try { localStorage.setItem(shownKey, todayStr); } catch (e) { /* ignore */ }
+    if (isMonday) { try { localStorage.setItem(mondayKey, todayStr); } catch (e) { /* ignore */ } }
+    document.getElementById('dueSummaryDay').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
     document.getElementById('dueSummaryOverlay').classList.add('open');
   }
+
+  // tapping a task in the Today pop-up closes it and opens that task, on whichever tab it lives
+  document.getElementById('dueSummaryBody').addEventListener('click', e => {
+    const li = e.target.closest('li[data-id]');
+    if (!li) return;
+    const t = todos.find(x => x.id === li.dataset.id);
+    if (!t) return;
+    closeDueSummary();
+    filterMode = null;
+    setPage(t.done ? 'done' : t.pending ? 'pending' : 'active');
+    toggleExpanded(t.id);
+  });
+  document.getElementById('dueSummaryBody').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.matches('li[data-id]')) e.target.click();
+  });
+  document.getElementById('dueSummaryTodayBtn').addEventListener('click', () => {
+    closeDueSummary();
+    setPage('today');
+  });
 
   function addItem() {
     const value = input.value.trim();
