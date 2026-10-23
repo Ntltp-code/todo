@@ -124,7 +124,7 @@
     <div class="new-task-overlay task-edit-overlay" id="taskEditOverlay" role="dialog" aria-modal="true" aria-labelledby="taskEditTitle">
       <div class="new-task-window task-edit-window">
         <div class="new-task-titlebar">
-          <span class="task-edit-title" id="taskEditTitle">Editing task</span>
+          <span class="task-edit-title" id="taskEditTitle">Task</span>
           <button id="taskEditClose" class="new-task-window-close" type="button" aria-label="Close">&#10005;</button>
         </div>
         <div class="task-edit-body" id="taskEditBody"></div>
@@ -197,7 +197,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.10</span></h2>
+      <h2>Settings <span class="settings-version">v12.11</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -411,6 +411,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.11</span> The task window has a Save button again beside Done: Save keeps the window open (and adds any subtask or note you've typed), Done saves and closes it. The window's title is now just the task's name.</li>
           <li><span class="changelog-version">v12.10</span> Fixed the calendar not appearing when picking a due date or a sleep-until date. Clicking anywhere in a date box now opens the calendar, not just the small calendar icon.</li>
           <li><span class="changelog-version">v12.9</span> Removed the "Waiting on" field from the New Task and edit windows, along with its &#9203; tags and the Waiting filter. Any names already entered are kept in your data and CSV exports, just no longer shown.</li>
           <li><span class="changelog-version">v12.8</span> The page is a little narrower on big screens (up to 1250px). The Today pop-up that appears when you open the app is bigger, with larger text. A small version label now sits under the date.</li>

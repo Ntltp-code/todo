@@ -924,7 +924,7 @@
           editName.addEventListener('input', () => {
             item.text = editName.value;
             taskTextLabel.textContent = editName.value;
-            taskEditTitle.textContent = 'Editing: ' + editName.value;
+            taskEditTitle.textContent = editName.value;
             debouncedSave();
           });
 
@@ -1274,7 +1274,7 @@
           entryTypeRow.appendChild(noteTypeBtn);
 
           const addSubtaskInput = document.createElement('textarea');
-          addSubtaskInput.placeholder = 'Add a subtask or note... (Enter to add, Shift+Enter for a new line, or Done)';
+          addSubtaskInput.placeholder = 'Add a subtask or note... (Enter to add, Shift+Enter for a new line, or Save)';
           addSubtaskInput.className = 'add-subtask-input';
           addSubtaskInput.maxLength = 5000;
           addSubtaskInput.rows = 4;
@@ -1340,12 +1340,8 @@
             });
           }
 
-          // edits save as you go, so one Done button: keep any typed subtask/note, then close
-          const doneTaskBtn = document.createElement('button');
-          doneTaskBtn.type = 'button';
-          doneTaskBtn.className = 'save-task';
-          doneTaskBtn.textContent = 'Done';
-          doneTaskBtn.addEventListener('click', () => {
+          // keep any typed-but-not-added subtask/note, then save
+          const commitPending = () => {
             const pendingSubtask = addSubtaskInput.value.trim();
             if (pendingSubtask) {
               const entryType = addEntryTypeByItem[item.id] || 'subtask';
@@ -1354,6 +1350,25 @@
               delete subtaskDrafts[item.id];
             }
             save();
+          };
+
+          // Save keeps the window open; Done saves and closes it
+          const saveTaskBtn = document.createElement('button');
+          saveTaskBtn.type = 'button';
+          saveTaskBtn.className = 'save-only-task';
+          saveTaskBtn.textContent = 'Save';
+          saveTaskBtn.addEventListener('click', () => {
+            commitPending();
+            render();
+            showSavedNote();
+          });
+
+          const doneTaskBtn = document.createElement('button');
+          doneTaskBtn.type = 'button';
+          doneTaskBtn.className = 'save-task';
+          doneTaskBtn.textContent = 'Done';
+          doneTaskBtn.addEventListener('click', () => {
+            commitPending();
             expandedIds.clear();
             render();
           });
@@ -1437,6 +1452,7 @@
           if (sleepUntilInput) panelFooter.appendChild(sleepUntilInput);
           if (markCompleteBtn) panelFooter.appendChild(markCompleteBtn);
           panelFooter.appendChild(savedNote);
+          panelFooter.appendChild(saveTaskBtn);
           panelFooter.appendChild(doneTaskBtn);
 
           panel.appendChild(editFields);
@@ -1468,7 +1484,7 @@
     const canAdd = page === 'active' || page === 'today';
     newTaskOverlay.classList.toggle('open', canAdd && addFormOpen);
     if (editingItem) {
-      taskEditTitle.textContent = 'Editing: ' + editingItem.text;
+      taskEditTitle.textContent = editingItem.text;
       taskEditOverlay.classList.add('open');
       if (lastEditedId === editingItem.id) taskEditBody.scrollTop = prevEditScroll;
       lastEditedId = editingItem.id;
