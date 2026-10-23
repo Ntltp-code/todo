@@ -43,6 +43,26 @@
     --priority-medium: #808080;
   }
 
+  body.theme-terminal {
+    --paper: #000000;
+    --paper-dark: #061206;
+    --ink: #39FF14;
+    --ink-muted: #3FAF3F;   /* brighter than the original #1F6B1F so small text is readable */
+    --rule: #2ECC40;
+    --stamp: #00FF00;
+    --check: #2ECC40;
+    --check-bg: #0D260D;
+    --accent-blue: #39FF14;
+    --outer-bg: #000000;
+    --due-highlight: #123312;
+    --priority-medium: #17A317;
+  }
+
+  body.theme-terminal .title-logo,
+  body.theme-terminal .footer-brand-logo {
+    display: none;
+  }
+
   * { box-sizing: border-box; }
 
   body {
@@ -1829,6 +1849,10 @@
     background: linear-gradient(135deg, #FFFFFF 50%, #000000 50%);
   }
 
+  .theme-swatch-terminal {
+    background: linear-gradient(135deg, #000000 50%, #39FF14 50%);
+  }
+
   .changelog-list {
     list-style: none;
     margin: 0;
@@ -2164,7 +2188,8 @@
   }
 
   body.theme-dark input[type="date"]::-webkit-calendar-picker-indicator,
-  body.theme-warmdark input[type="date"]::-webkit-calendar-picker-indicator {
+  body.theme-warmdark input[type="date"]::-webkit-calendar-picker-indicator,
+  body.theme-terminal input[type="date"]::-webkit-calendar-picker-indicator {
     filter: invert(1);
   }
 
@@ -2367,6 +2392,9 @@ li.item .task-text.high-priority { color:inherit; }
 .priority-bars.medium i:nth-child(-n+2),
 .priority-bars.high i { background:var(--ink); }
 li.item.done .priority-bars i { background:var(--rule); }
+/* Terminal draws its lines in bright green, so unlit bars need their own dim green */
+body.theme-terminal .priority-bars i { background:#1F4F1F; }
+body.theme-terminal .priority-bars.low i:nth-child(1), body.theme-terminal .priority-bars.medium i:nth-child(-n+2), body.theme-terminal .priority-bars.high i { background:var(--ink); }
 
 /* narrower windows: compact two-line rows (same as phones) instead of squeezed columns */
 @media (max-width: 1000px) {
@@ -2509,3 +2537,29 @@ kbd { display:inline-block; min-width:20px; padding:0 6px; border:1px solid var(
 .due-summary-secondary { flex:1; padding:10px; border:1px solid var(--rule); background:transparent; color:var(--ink); font-family:inherit; font-weight:700; font-size:12px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; }
 .due-summary-secondary:hover { border-color:var(--ink); }
 body.theme-warm .due-summary-secondary, body.theme-warmdark .due-summary-secondary { border-radius:10px; }
+
+/* ===== v12.4: Terminal is strictly green on black ===== */
+/* status colours become greens; overdue vs due today is told apart by tint, stripe and wording instead */
+body.theme-terminal { --overdue:#39FF14; --due:#2ECC40; accent-color:#39FF14; color-scheme:dark; font-variant-emoji:text; }
+body.theme-terminal ::selection { background:#39FF14; color:#000; }
+body.theme-terminal li.item.overdue-row { background:#0D2A0D; }
+body.theme-terminal li.item.due-today { background:#061206; box-shadow:inset 3px 0 0 #2ECC40; }
+body.theme-terminal li.item.overdue-row .cell-due { text-decoration:underline; }
+body.theme-terminal .star-mark, body.theme-terminal .star-toggle.on { color:var(--ink); border-color:var(--ink); }
+/* filled buttons and active chips: black text on green, never white */
+body.theme-terminal .toolbar-chips .filter-trigger.filter-active,
+body.theme-terminal .toolbar-chips .filter-trigger.filter-active span,
+body.theme-terminal .confirm-ok,
+body.theme-terminal .app-label:not(:empty) { color:#000 !important; }
+/* sync dot: solid when saved, dim while saving or on this device only, hollow on an error (gh-storage sets an inline colour, hence !important) */
+body.theme-terminal .sync-dot { background:#1F6B1F !important; box-shadow:none; }
+body.theme-terminal .sync-dot[data-state="ok"] { background:#39FF14 !important; }
+body.theme-terminal .sync-dot[data-state="error"] { background:transparent !important; box-shadow:inset 0 0 0 2px #39FF14; }
+body.theme-terminal .sync-error { background:#000; border-color:#39FF14; color:#39FF14; }
+/* notifications */
+body.theme-terminal .toast { background:#000; color:#39FF14; border:1px solid #39FF14; box-shadow:none; }
+body.theme-terminal .toast button { color:#39FF14; }
+/* phone search icon is an image, so it needs its own green copy */
+@media (max-width: 640px) {
+  body.theme-terminal .header-search { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2339FF14' stroke-width='2.5' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5 21 21'/%3E%3C/svg%3E"); }
+}

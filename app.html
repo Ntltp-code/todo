@@ -201,7 +201,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.2</span></h2>
+      <h2>Settings <span class="settings-version">v12.4</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -237,6 +237,10 @@
           <button class="theme-option" type="button" data-theme="bw">
             <span class="theme-swatch theme-swatch-bw"></span>
             <span>High contrast</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="terminal">
+            <span class="theme-swatch theme-swatch-terminal"></span>
+            <span>Terminal</span>
           </button>
         </div>
       </div>
@@ -411,6 +415,8 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.4</span> The Terminal theme is now strictly green on black: overdue and due-today tasks, the star, the sync dot, notifications, checkboxes and icons all use greens. Overdue tasks are told apart by a stronger green tint and underlined "Overdue" wording; due-today tasks keep a green stripe. Other themes are unchanged.</li>
+          <li><span class="changelog-version">v12.3</span> The Terminal theme (green on black) is back in Settings &rarr; Theme. Its dimmer green text is a little brighter than before so it's easier to read; overdue and due-today tasks still show in red and blue.</li>
           <li><span class="changelog-version">v12.2</span> The app now always opens on the To-do tab. Your Today list (overdue, due today and starred tasks) pops up each time you open it instead; tap a task in the pop-up to open it, or "Show Today tab" to jump there. On Mondays the pop-up also includes the untouched-tasks review and backup reminder, once.</li>
           <li><span class="changelog-version">v12.1</span> The To-do title and date are centred again. The search box under the settings icon no longer sits over the line beneath the header. Overdue tasks keep their red tint but lose the red stripe down the left edge. The "Switch user" link has been removed.</li>
           <li><span class="changelog-version">v12.0</span> New <strong>Today</strong> tab with everything overdue, due today or starred (star a task from its window); the app opens on it when there's something there. New <strong>Waiting on</strong> field for tasks you're waiting on someone else for, with a Waiting filter. <strong>Select</strong> several tasks to complete, move, star or re-categorise them in one go. An <strong>Untouched 14d+</strong> filter, and on Mondays the summary lists tasks nobody has changed in 14+ days and reminds you to back up. Ticking a task done now offers <strong>Undo</strong>. Subtask progress (e.g. &#10003; 2/3) shows on each row. Dates use one style everywhere (22 Oct, Today, Tomorrow, Overdue 3 days). Import skips tasks you already have. The New Task and edit windows now match, with labelled fields, and Repeat can be changed after a task is created. The summary pop-up appears once a day. Settings are grouped, themes are trimmed to six well-tested ones (if you used a removed theme, you're switched to "Match my device"), and keyboard shortcuts are listed under About. Bigger tap targets and a search icon on phones; the login page matches the app.</li>
