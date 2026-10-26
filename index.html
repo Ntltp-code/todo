@@ -42,6 +42,8 @@ dialog h2{margin:0 0 4px;font-size:1.2rem}
 dialog .row{display:flex;gap:10px;margin-top:16px;justify-content:flex-end}
 dialog input{text-align:center;letter-spacing:.4em;font-size:1.3rem}
 #pinErr{color:var(--bad);font-size:.9rem;min-height:1.2em;margin-top:8px}
+#pinErr.ok{color:var(--ok)}
+button.link{margin-right:auto;padding:10px 0;border:0;background:none;color:var(--acc);font:inherit;font-size:.9rem;font-weight:700;text-decoration:underline;cursor:pointer}
 </style>
 </head>
 <body>
@@ -71,9 +73,10 @@ dialog input{text-align:center;letter-spacing:.4em;font-size:1.3rem}
   <div class="note" id="pinHelp"></div>
   <label for="pin1" id="pin1l">PIN</label>
   <input id="pin1" type="password" inputmode="numeric" maxlength="4" autocomplete="off">
-  <div id="pin2wrap" hidden><label for="pin2">Confirm PIN</label><input id="pin2" type="password" inputmode="numeric" maxlength="4" autocomplete="off"></div>
+  <div id="pin2wrap" hidden><label for="pin2" id="pin2l">Confirm PIN</label><input id="pin2" type="password" inputmode="numeric" maxlength="4" autocomplete="off"></div>
+  <div id="pin3wrap" hidden><label for="pin3">Confirm new PIN</label><input id="pin3" type="password" inputmode="numeric" maxlength="4" autocomplete="off"></div>
   <div id="pinErr"></div>
-  <div class="row"><button class="sec" id="pinCancel" type="button">Cancel</button><button class="pri" id="pinOk" type="button" style="margin:0">Continue</button></div>
+  <div class="row"><button class="link" id="pinChange" type="button" hidden>Change PIN</button><button class="sec" id="pinCancel" type="button">Cancel</button><button class="pri" id="pinOk" type="button" style="margin:0">Continue</button></div>
 </dialog>
 
 <script src="config.js"></script>
@@ -85,7 +88,7 @@ dialog input{text-align:center;letter-spacing:.4em;font-size:1.3rem}
   var pins = {};
   try { pins = JSON.parse(localStorage.getItem('todo_pins') || '{}'); } catch (e) {}
   var $ = function (id) { return document.getElementById(id); };
-  var current = null, creating = false;
+  var current = null, creating = false, changing = false;
 
   async function hash(u, pin) {
     var b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(SALT + ':' + u + ':' + pin));
@@ -115,32 +118,77 @@ dialog input{text-align:center;letter-spacing:.4em;font-size:1.3rem}
     renderUsers();
   }
 
-  async function publishPins() {
+  // onlyUser: update just that person's PIN on GitHub, so a stale copy here can't overwrite anyone else's
+  async function publishPins(onlyUser) {
     if (!TodoGH.cfg().token) return false;
     try {
       var f = await TodoGH.getFile('users.json');
-      var merged = Object.assign({}, f && f.data && f.data.pins || {}, pins);
+      var remote = f && f.data && f.data.pins || {};
+      var merged = Object.assign({}, remote, onlyUser ? {} : pins);
+      if (onlyUser) merged[onlyUser] = pins[onlyUser];
       await TodoGH.putFile('users.json', { pins: merged }, f ? f.sha : null);
       return true;
     } catch (e) { return false; }
   }
 
   function openPin(u) {
-    current = u; creating = !pins[u.id];
+    current = u; creating = !pins[u.id]; changing = false;
     $('pinTitle').textContent = creating ? 'Create a PIN for ' + u.name : 'Hello ' + u.name;
     $('pinHelp').textContent = creating ? 'Choose a 4-digit PIN. It is light protection only.' : 'Enter your 4-digit PIN.';
-    $('pin2wrap').hidden = !creating; $('pin1').value = ''; $('pin2').value = ''; $('pinErr').textContent = '';
+    $('pin1l').textContent = 'PIN'; $('pin2l').textContent = 'Confirm PIN';
+    $('pin2wrap').hidden = !creating; $('pin3wrap').hidden = true; $('pinChange').hidden = creating;
+    $('pinOk').textContent = 'Continue';
+    ['pin1', 'pin2', 'pin3'].forEach(function (id) { $(id).value = ''; });
+    $('pinErr').textContent = ''; $('pinErr').className = '';
     $('pinDlg').showModal(); $('pin1').focus();
   }
 
+  // Change PIN: current PIN first (so only its owner can change it), then the new one twice
+  function startChangePin() {
+    changing = true;
+    $('pinTitle').textContent = 'Change PIN for ' + current.name;
+    $('pinHelp').textContent = 'Enter your current PIN, then choose a new 4-digit PIN.';
+    $('pin1l').textContent = 'Current PIN'; $('pin2l').textContent = 'New PIN';
+    $('pin2wrap').hidden = false; $('pin3wrap').hidden = false; $('pinChange').hidden = true;
+    $('pinOk').textContent = 'Change PIN';
+    ['pin1', 'pin2', 'pin3'].forEach(function (id) { $(id).value = ''; });
+    $('pinErr').textContent = ''; $('pinErr').className = '';
+    $('pin1').focus();
+  }
+
+  async function submitChangePin() {
+    var oldP = $('pin1').value, newP = $('pin2').value, err = $('pinErr');
+    err.className = '';
+    if (!/^\d{4}$/.test(oldP)) { err.textContent = 'Enter your current 4-digit PIN.'; return; }
+    if (pins[current.id] !== await hash(current.id, oldP)) { err.textContent = 'That isn\'t your current PIN.'; $('pin1').value = ''; $('pin1').focus(); return; }
+    if (!/^\d{4}$/.test(newP)) { err.textContent = 'The new PIN must be exactly 4 digits.'; return; }
+    if (newP === oldP) { err.textContent = 'Choose a PIN different from your current one.'; return; }
+    if ($('pin3').value !== newP) { err.textContent = 'The two new PINs do not match.'; return; }
+    $('pinOk').disabled = true;
+    pins[current.id] = await hash(current.id, newP); savePinsLocal();
+    var synced = await publishPins(current.id);
+    $('pinOk').disabled = false;
+    err.className = synced || !TodoGH.cfg().token ? 'ok' : '';
+    err.textContent = synced ? 'PIN changed on this device and on GitHub. Opening your list…'
+      : TodoGH.cfg().token ? 'PIN changed on this device, but GitHub couldn\'t be updated, so other devices still use the old PIN. Try again when you\'re online.'
+      : 'PIN changed on this device. Opening your list…';
+    if (synced || !TodoGH.cfg().token) {
+      setTimeout(function () {
+        try { sessionStorage.setItem('todo_authed_' + current.id, '1'); } catch (e) {}
+        location.href = 'app.html?u=' + encodeURIComponent(current.id);
+      }, 1200);
+    }
+  }
+
   async function submitPin() {
+    if (changing) return submitChangePin();
     var p = $('pin1').value;
     if (!/^\d{4}$/.test(p)) { $('pinErr').textContent = 'The PIN must be exactly 4 digits.'; return; }
     var h = await hash(current.id, p);
     if (creating) {
       if ($('pin2').value !== p) { $('pinErr').textContent = 'The two PINs do not match.'; return; }
       pins[current.id] = h; savePinsLocal();
-      await publishPins();
+      await publishPins(current.id);
     } else if (pins[current.id] !== h) {
       $('pinErr').textContent = 'Wrong PIN, try again.'; $('pin1').value = ''; return;
     }
@@ -149,8 +197,9 @@ dialog input{text-align:center;letter-spacing:.4em;font-size:1.3rem}
   }
 
   $('pinOk').onclick = submitPin;
+  $('pinChange').onclick = startChangePin;
   $('pinCancel').onclick = function () { $('pinDlg').close(); };
-  ['pin1', 'pin2'].forEach(function (id) { $(id).addEventListener('keydown', function (e) { if (e.key === 'Enter') submitPin(); }); });
+  ['pin1', 'pin2', 'pin3'].forEach(function (id) { $(id).addEventListener('keydown', function (e) { if (e.key === 'Enter') submitPin(); }); });
 
   var c = TodoGH.cfg();
   $('repo').value = c.repo; $('branch').value = c.branch; $('token').value = c.token;
