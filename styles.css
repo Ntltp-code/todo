@@ -2839,3 +2839,6 @@ body.layout-linen .priority-tag { border-radius:999px; }
 @media (max-width: 640px) {
   .text-size-btn { min-width:40px; height:36px; }
 }
+
+/* ===== v12.21: secret boxes are text boxes drawn as dots, so browsers don't offer to save them ===== */
+input.masked { -webkit-text-security:disc; }
