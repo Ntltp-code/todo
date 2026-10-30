@@ -160,6 +160,10 @@
       <div class="new-task-window task-edit-window">
         <div class="new-task-titlebar">
           <span class="task-edit-title" id="taskEditTitle">Task</span>
+          <span class="text-size-btns" role="group" aria-label="Text size">
+            <button type="button" class="text-size-btn" id="taskTextSmaller" aria-label="Smaller text" title="Smaller text"><span class="ts-small">A</span>&minus;</button>
+            <button type="button" class="text-size-btn" id="taskTextLarger" aria-label="Larger text" title="Larger text"><span class="ts-large">A</span>+</button>
+          </span>
           <button id="taskEditClose" class="new-task-window-close" type="button" aria-label="Close">&#10005;</button>
         </div>
         <div class="task-edit-body" id="taskEditBody"></div>
@@ -232,7 +236,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.19</span></h2>
+      <h2>Settings <span class="settings-version">v12.20</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -483,6 +487,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.20</span> A&minus; and A+ buttons in the task window's title bar make its text smaller or larger. Your size is remembered and follows you to your other devices.</li>
           <li><span class="changelog-version">v12.19</span> Browsers no longer offer to "save a password" when you add a task: the lock-screen, app-password and encryption passphrase boxes are now kept separate from the task boxes.</li>
           <li><span class="changelog-version">v12.18</span> Themes now work with every layout (e.g. Terminal in Sage): pick "Layout colours" for the layout's own look. The new layouts remember their own theme, so the Original layout keeps yours. Sage: the Select button stays readable when pressed, tidier filter chips (Untouched 14d+ included) with counts in small bubbles, and on big screens the page is wider with tasks in two columns (three on very wide screens).</li>
           <li><span class="changelog-version">v12.17</span> New Settings &rarr; Appearance &rarr; Layout: keep the Original look (the default) or switch to one of three fresh light designs &mdash; Paper (crisp white and blue), Sage (soft green, lists in a side menu, tasks on cards) or Linen &amp; Clay (warm cream, a large date and summary cards for overdue, due today and today's list). Themes still apply to the Original layout.</li>

@@ -2824,3 +2824,18 @@ body.layout-linen .priority-tag { border-radius:999px; }
   body[class*="layout-"].layout-linen .layout-card-num { font-size:24px; }
   body.layout-linen .layout-card-label { font-size:12px; }
 }
+
+/* ===== v12.20: text size buttons in the task window ===== */
+.task-edit-window .new-task-titlebar { gap:8px; }
+.task-edit-window .task-edit-title { flex:1 1 auto; }
+.text-size-btns { display:flex; gap:6px; flex:none; margin-right:6px; }
+.text-size-btn { display:inline-flex; align-items:center; justify-content:center; gap:1px; min-width:40px; height:32px; padding:0 8px; border:1px solid color-mix(in srgb, var(--paper) 55%, transparent); border-radius:8px; background:transparent; color:var(--paper); font-family:inherit; font-weight:800; font-size:13px; line-height:1; cursor:pointer; }
+.text-size-btn .ts-small { font-size:12px; }
+.text-size-btn .ts-large { font-size:17px; }
+.text-size-btn:hover:not(:disabled) { background:color-mix(in srgb, var(--paper) 18%, transparent); }
+.text-size-btn:disabled { opacity:.4; cursor:default; }
+/* scales the task window's contents (text, boxes and buttons together, so nothing gets cramped) */
+.task-edit-body { zoom:var(--task-zoom, 1); }
+@media (max-width: 640px) {
+  .text-size-btn { min-width:40px; height:36px; }
+}

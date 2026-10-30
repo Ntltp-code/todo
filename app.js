@@ -86,6 +86,7 @@
   const THEME_KEY = STORAGE_PREFIX + 'theme';
   const LAYOUT_KEY = STORAGE_PREFIX + 'layout';
   const LAYOUT_THEME_KEY = STORAGE_PREFIX + 'layoutTheme';
+  const TASK_TEXT_SIZE_KEY = STORAGE_PREFIX + 'taskTextSize';
   const LOCAL_UPDATED_KEY = STORAGE_PREFIX + 'localDataUpdatedAt';
   let localDataUpdatedAt = 0;
   const LAST_EXPORT_KEY = STORAGE_PREFIX + 'lastExportAt';
@@ -374,6 +375,25 @@
     btn.addEventListener('click', () => selectLayout(btn.dataset.layout));
   });
 
+  // text size in the task window (A− / A+ in its title bar), saved and synced like the theme
+  const TASK_TEXT_SIZES = [0.9, 1, 1.15, 1.3, 1.5, 1.75];
+  let taskTextSize = 1;
+  function applyTaskTextSize(size) {
+    const n = Number(size);
+    taskTextSize = TASK_TEXT_SIZES.includes(n) ? n : 1;
+    document.querySelector('.task-edit-window').style.setProperty('--task-zoom', taskTextSize);
+    document.getElementById('taskTextSmaller').disabled = taskTextSize === TASK_TEXT_SIZES[0];
+    document.getElementById('taskTextLarger').disabled = taskTextSize === TASK_TEXT_SIZES[TASK_TEXT_SIZES.length - 1];
+  }
+  function stepTaskTextSize(step) {
+    const i = TASK_TEXT_SIZES.indexOf(taskTextSize) + step;
+    if (i < 0 || i >= TASK_TEXT_SIZES.length) return;
+    applyTaskTextSize(TASK_TEXT_SIZES[i]);
+    queuedStorageSet(TASK_TEXT_SIZE_KEY, String(taskTextSize));
+  }
+  document.getElementById('taskTextSmaller').addEventListener('click', () => stepTaskTextSize(-1));
+  document.getElementById('taskTextLarger').addEventListener('click', () => stepTaskTextSize(1));
+
   // Linen & Clay's summary cards just press the matching filter or tab
   document.querySelectorAll('.layout-card').forEach(card => {
     card.addEventListener('click', () => {
@@ -571,6 +591,12 @@
   });
 
   async function load() {
+    try {
+      const sizeResult = await storageGet(TASK_TEXT_SIZE_KEY);
+      applyTaskTextSize(sizeResult ? sizeResult.value : 1);
+    } catch (e) {
+      applyTaskTextSize(1);
+    }
     try {
       const layoutThemeResult = await storageGet(LAYOUT_THEME_KEY);
       const v = layoutThemeResult && layoutThemeResult.value;
