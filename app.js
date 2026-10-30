@@ -2487,14 +2487,20 @@
   document.addEventListener('focusin', e => {
     if (!e.target.closest || !e.target.closest('.modal-overlay, .new-task-overlay')) lastOutsideFocus = e.target;
   });
+  // while any pop-up is open the page behind it is locked, so scrolling moves the pop-up, not the page
+  function syncScrollLock() {
+    document.documentElement.classList.toggle('overlay-open', !!document.querySelector('.modal-overlay.open, .new-task-overlay.open'));
+  }
   document.querySelectorAll('.modal-overlay, .new-task-overlay').forEach(ov => {
     let wasOpen = false;
     new MutationObserver(() => {
       const isOpen = ov.classList.contains('open');
       if (wasOpen && !isOpen && lastOutsideFocus && document.contains(lastOutsideFocus)) lastOutsideFocus.focus();
       wasOpen = isOpen;
+      syncScrollLock();
     }).observe(ov, { attributes: true, attributeFilter: ['class'] });
   });
+  syncScrollLock();
 
   addBtn.addEventListener('click', addItem);
   input.addEventListener('keydown', e => {

@@ -2583,3 +2583,25 @@ body.theme-warm .task-edit-footer .save-only-task, body.theme-warmdark .task-edi
 /* the small "saved" note sits on its own line above the buttons, so Save and Done stay side by side */
 .task-edit-footer .saved-note { order:-1; flex-basis:100%; text-align:right; margin-bottom:-2px; }
 @media (max-width: 640px) { .task-edit-footer .saved-note { order:0; text-align:left; } }
+
+/* ===== v12.14: pop-ups scroll themselves, never the page behind ===== */
+/* lock the page while a pop-up is open */
+html.overlay-open, html.overlay-open body { overflow:hidden; }
+/* if a pop-up is ever taller than the screen, the dimmed backdrop scrolls instead of the page */
+.modal-overlay, .new-task-overlay { overflow-y:auto; overscroll-behavior:contain; }
+/* scrolling inside a pop-up stops at its ends rather than carrying on into the page */
+.modal, .new-task-window, .task-edit-body, .report-modal { overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+/* size pop-ups to the visible screen: on phones and tablets "vh" can include the area under the address bar */
+@supports (height: 100dvh) {
+  .modal { max-height:80dvh; }
+  .modal.due-summary-modal { max-height:88dvh; }
+  .task-edit-window { max-height:calc(100dvh - 32px); }
+  .report-modal { height:92dvh; }
+  @media (max-width: 640px) { .task-edit-window { max-height:100dvh; } }
+}
+/* the warm themes round their pop-ups with overflow:hidden, which also stopped them scrolling:
+   keep the rounded corners but let the content scroll */
+body.theme-warm .modal, body.theme-warmdark .modal { overflow-x:hidden; overflow-y:auto; }
+/* the New Task window can be taller than a small screen, so it scrolls too */
+.new-task-window:not(.task-edit-window) { max-height:calc(100vh - 32px); overflow-y:auto; }
+@supports (height: 100dvh) { .new-task-window:not(.task-edit-window) { max-height:calc(100dvh - 32px); } }
