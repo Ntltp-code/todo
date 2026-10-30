@@ -900,7 +900,6 @@
           (selectMode && selectedIds.has(item.id) ? ' selected' : '');
         li.dataset.id = item.id;
         li.dataset.group = group ? String(group.key) : '';
-        li.draggable = !expandedIds.has(item.id) && !selectMode;
 
         const box = document.createElement('div');
         box.className = 'box';
@@ -1020,7 +1019,12 @@
         row.appendChild(stamp);
         li.appendChild(row);
 
-        taskText.addEventListener('click', () => (selectMode ? toggleSelected(item.id) : toggleExpanded(item.id)));
+        // a click anywhere on the row opens the task (or selects it in select mode);
+        // the tick box and the small "Woke up" marker keep their own clicks
+        li.addEventListener('click', e => {
+          if (e.target.closest('.box, .woke-tag, button, a, input, select, textarea')) return;
+          if (selectMode) toggleSelected(item.id); else toggleExpanded(item.id);
+        });
 
         if (expandedIds.has(item.id)) {
           const panel = document.createElement('div');
@@ -2518,50 +2522,6 @@
     reader.readAsText(file);
   });
 
-
-  // ---------- drag to reorder (within a group) ----------
-  let dragId = null;
-  function clearDropMarks() {
-    listEl.querySelectorAll('.drop-before, .drop-after, .dragging').forEach(el => el.classList.remove('drop-before', 'drop-after', 'dragging'));
-  }
-  listEl.addEventListener('dragstart', e => {
-    const li = e.target.closest && e.target.closest('li.item');
-    if (!li || !li.dataset.id) return;
-    dragId = li.dataset.id;
-    li.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
-    try { e.dataTransfer.setData('text/plain', dragId); } catch (err) { /* ignore */ }
-  });
-  listEl.addEventListener('dragover', e => {
-    const li = e.target.closest && e.target.closest('li.item');
-    if (!dragId || !li || li.dataset.id === dragId) return;
-    const dragged = listEl.querySelector('li.item[data-id="' + dragId + '"]');
-    if (!dragged || dragged.dataset.group !== li.dataset.group) return;
-    e.preventDefault();
-    const after = e.clientY > li.getBoundingClientRect().top + li.offsetHeight / 2;
-    listEl.querySelectorAll('.drop-before, .drop-after').forEach(el => el.classList.remove('drop-before', 'drop-after'));
-    li.classList.add(after ? 'drop-after' : 'drop-before');
-  });
-  listEl.addEventListener('drop', e => {
-    const li = e.target.closest && e.target.closest('li.item');
-    if (!dragId || !li) return;
-    e.preventDefault();
-    const after = li.classList.contains('drop-after');
-    const from = todos.findIndex(t => t.id === dragId);
-    const moved = from >= 0 ? todos.splice(from, 1)[0] : null;
-    let to = todos.findIndex(t => t.id === li.dataset.id);
-    if (moved && to >= 0) {
-      todos.splice(after ? to + 1 : to, 0, moved);
-      if (sortBy === 'name') showToast('Reordering has no effect when sorted by name.');
-    } else if (moved) {
-      todos.splice(from, 0, moved);
-    }
-    dragId = null;
-    clearDropMarks();
-    render();
-    save();
-  });
-  listEl.addEventListener('dragend', () => { dragId = null; clearDropMarks(); });
 
   // ---------- keyboard shortcuts and focus return ----------
   const overlayClosers = [

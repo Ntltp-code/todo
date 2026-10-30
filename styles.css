@@ -2842,3 +2842,10 @@ body.layout-linen .priority-tag { border-radius:999px; }
 
 /* ===== v12.21: secret boxes are text boxes drawn as dots, so browsers don't offer to save them ===== */
 input.masked { -webkit-text-security:disc; }
+
+/* ===== v12.23: the whole task row opens the task; no more drag to reorder ===== */
+li.item { cursor:pointer; }
+li.item:hover:not(.selected) { background:color-mix(in srgb, var(--ink) 4%, transparent); }
+li.item.due-today:hover { background:color-mix(in srgb, var(--due) 13%, var(--paper)); }
+li.item.overdue-row:hover { background:color-mix(in srgb, var(--overdue) 14%, var(--paper)); }
+body.layout-sage li.item:hover:not(.selected) { background:color-mix(in srgb, var(--ink) 4%, var(--paper)); }
