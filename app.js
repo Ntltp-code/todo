@@ -85,6 +85,7 @@
   const ASSIGNED_BY_KEY = STORAGE_PREFIX + 'assignedByOptions';
   const THEME_KEY = STORAGE_PREFIX + 'theme';
   const LAYOUT_KEY = STORAGE_PREFIX + 'layout';
+  const LAYOUT_THEME_KEY = STORAGE_PREFIX + 'layoutTheme';
   const LOCAL_UPDATED_KEY = STORAGE_PREFIX + 'localDataUpdatedAt';
   let localDataUpdatedAt = 0;
   const LAST_EXPORT_KEY = STORAGE_PREFIX + 'lastExportAt';
@@ -281,36 +282,61 @@
   const VALID_LAYOUTS = ['original', 'paper', 'sage', 'linen'];
   const LAYOUT_BAR_COLOURS = { paper: '#2563EB', sage: '#2E6A4F', linen: '#A84A28' };
   let layoutSetting = 'original';
+  // the new layouts keep their own theme choice, so Original keeps its theme too;
+  // 'layout' means the layout's own colours
+  let layoutThemeSetting = 'layout';
   const darkQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   if (darkQuery && darkQuery.addEventListener) {
-    darkQuery.addEventListener('change', () => { if (themeSetting === 'auto') applyTheme('auto'); });
+    darkQuery.addEventListener('change', () => { if (currentTheme() === 'auto') applyTheme(); });
   }
 
+  function currentTheme() {
+    return layoutSetting === 'original' ? themeSetting : layoutThemeSetting;
+  }
+
+  function userKey(name) {
+    const u = (new URLSearchParams(location.search).get('u') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    return 'todo_' + name + '_' + u;
+  }
+
+  // with no argument, re-applies whatever theme the current layout uses
   function applyTheme(theme) {
-    if (!VALID_THEMES.includes(theme)) theme = 'auto';
-    themeSetting = theme;
-    const shown = theme === 'auto' ? ((darkQuery && darkQuery.matches) ? 'warmdark' : 'warm') : theme;
-    document.body.classList.remove('theme-warm', 'theme-warmdark', 'theme-dark', 'theme-colourful', 'theme-notebook', 'theme-forest', 'theme-ocean', 'theme-sunset', 'theme-slate', 'theme-bw', 'theme-wb', 'theme-terminal');
+    if (theme !== undefined) themeSetting = VALID_THEMES.includes(theme) ? theme : 'auto';
+    const current = currentTheme();
+    const shown = current === 'auto' ? ((darkQuery && darkQuery.matches) ? 'warmdark' : 'warm') : current;
+    document.body.classList.remove('theme-warm', 'theme-warmdark', 'theme-dark', 'theme-colourful', 'theme-notebook', 'theme-forest', 'theme-ocean', 'theme-sunset', 'theme-slate', 'theme-bw', 'theme-wb', 'theme-terminal', 'layout-colours');
     // phones tint their address bar with this; Terminal keeps it black, the new layouts use their own accent
     const themeColour = document.querySelector('meta[name="theme-color"]');
-    if (themeColour) themeColour.content = LAYOUT_BAR_COLOURS[layoutSetting] || (shown === 'terminal' ? '#000000' : '#C96442');
-    // the new layouts bring their own colours, so themes only apply to the Original layout
-    if (shown !== 'light' && layoutSetting === 'original') {
+    if (themeColour) themeColour.content = shown === 'layout' ? LAYOUT_BAR_COLOURS[layoutSetting] : (shown === 'terminal' ? '#000000' : '#C96442');
+    if (shown === 'layout') {
+      document.body.classList.add('layout-colours');
+    } else if (shown !== 'light') {
       document.body.classList.add('theme-' + shown);
     }
     document.querySelectorAll('.theme-option[data-theme]').forEach(btn => {
-      btn.classList.toggle('selected', btn.dataset.theme === theme);
+      btn.classList.toggle('selected', btn.dataset.theme === current);
     });
-    // a plain copy for the start-up script in app.html, which can't wait for (or decrypt) the synced data
+    // plain copies for the start-up script in app.html, which can't wait for (or decrypt) the synced data
     try {
-      const u = (new URLSearchParams(location.search).get('u') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '');
-      localStorage.setItem('todo_theme_' + u, theme);
+      localStorage.setItem(userKey('theme'), themeSetting);
+      localStorage.setItem(userKey('layouttheme'), layoutThemeSetting);
     } catch (e) {}
   }
 
+  function applyLayoutTheme(theme) {
+    layoutThemeSetting = (theme === 'layout' || VALID_THEMES.includes(theme)) ? theme : 'layout';
+    applyTheme();
+  }
+
   async function selectTheme(theme) {
-    applyTheme(theme);
-    await queuedStorageSet(THEME_KEY, theme);
+    if (layoutSetting === 'original') {
+      if (theme === 'layout') return;
+      applyTheme(theme);
+      await queuedStorageSet(THEME_KEY, theme);
+    } else {
+      applyLayoutTheme(theme);
+      await queuedStorageSet(LAYOUT_THEME_KEY, layoutThemeSetting);
+    }
   }
 
   document.querySelectorAll('.theme-option[data-theme]').forEach(btn => {
@@ -335,11 +361,8 @@
     document.querySelectorAll('.layout-option').forEach(btn => {
       btn.classList.toggle('selected', btn.dataset.layout === layout);
     });
-    applyTheme(themeSetting);
-    try {
-      const u = (new URLSearchParams(location.search).get('u') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '');
-      localStorage.setItem('todo_layout_' + u, layout);
-    } catch (e) {}
+    applyTheme();
+    try { localStorage.setItem(userKey('layout'), layout); } catch (e) {}
   }
 
   async function selectLayout(layout) {
@@ -548,6 +571,11 @@
   });
 
   async function load() {
+    try {
+      const layoutThemeResult = await storageGet(LAYOUT_THEME_KEY);
+      const v = layoutThemeResult && layoutThemeResult.value;
+      if (v === 'layout' || VALID_THEMES.includes(v)) layoutThemeSetting = v;
+    } catch (e) { /* keep the layout's own colours */ }
     try {
       const layoutResult = await storageGet(LAYOUT_KEY);
       applyLayout(layoutResult && layoutResult.value ? layoutResult.value : 'original');

@@ -19,20 +19,25 @@
 /* paint in the saved theme straight away, and hide the list until the tasks are in */
 (function () {
   var u = (new URLSearchParams(location.search).get('u') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '');
-  var t = null;
-  try {
-    t = localStorage.getItem('todo_theme_' + u);
-    if (!t) { var c = JSON.parse(localStorage.getItem('todo_cache_' + u) || '{}'); t = c.data && c.data.work_theme; }
-  } catch (e) {}
-  if (['auto', 'warm', 'warmdark', 'light', 'dark', 'bw', 'terminal'].indexOf(t) < 0) t = 'auto';
+  var cached = null;
+  function saved(name, key) {
+    try {
+      var v = localStorage.getItem('todo_' + name + '_' + u);
+      if (v) return v;
+      if (!cached) cached = JSON.parse(localStorage.getItem('todo_cache_' + u) || '{}');
+      return cached.data && cached.data[key];
+    } catch (e) { return null; }
+  }
+  var themes = ['auto', 'warm', 'warmdark', 'light', 'dark', 'bw', 'terminal'];
+  var l = saved('layout', 'work_layout');
+  var layout = ['paper', 'sage', 'linen'].indexOf(l) >= 0;
+  // the new layouts keep their own theme choice ('layout' = the layout's own colours)
+  var t = layout ? saved('layouttheme', 'work_layoutTheme') : saved('theme', 'work_theme');
+  if (t !== 'layout' && themes.indexOf(t) < 0) t = layout ? 'layout' : 'auto';
   var dark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
   var shown = t === 'auto' ? (dark ? 'warmdark' : 'warm') : t;
-  var l = null;
-  try {
-    l = localStorage.getItem('todo_layout_' + u);
-    if (!l) { var c2 = JSON.parse(localStorage.getItem('todo_cache_' + u) || '{}'); l = c2.data && c2.data.work_layout; }
-  } catch (e) {}
-  if (['paper', 'sage', 'linen'].indexOf(l) >= 0) document.body.classList.add('layout-' + l);
+  if (layout) document.body.classList.add('layout-' + l);
+  if (shown === 'layout') document.body.classList.add('layout-colours');
   else if (shown !== 'light') document.body.classList.add('theme-' + shown);
   document.documentElement.classList.add('booting');
 })();
@@ -227,7 +232,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.17</span></h2>
+      <h2>Settings <span class="settings-version">v12.18</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -238,7 +243,7 @@
         <span class="accordion-arrow">&#9656;</span>
       </button>
       <div class="accordion-content" id="layoutContent">
-        <p class="settings-hint">Pick how the page is laid out. Paper, Sage and Linen &amp; Clay are light designs with their own colours; themes apply to the Original layout.</p>
+        <p class="settings-hint">Pick how the page is laid out. Paper, Sage and Linen &amp; Clay come with their own colours, or you can pick any theme for them below.</p>
         <div class="theme-options" id="layoutOptions">
           <button class="theme-option layout-option" type="button" data-layout="original">
             <span class="theme-swatch layout-swatch-original"></span>
@@ -266,8 +271,12 @@
       </button>
       <div class="accordion-content" id="themeContent">
         <p class="settings-hint">Pick a colour scheme. "Match my device" switches between Warm and Warm Dark with your device's light/dark setting.</p>
-        <p class="settings-hint layout-theme-note">Themes only change the Original layout. Switch Layout back to Original to use them.</p>
+        <p class="settings-hint layout-theme-note">This theme is used with your current layout; the Original layout keeps its own.</p>
         <div class="theme-options" id="themeOptions">
+          <button class="theme-option" type="button" data-theme="layout">
+            <span class="theme-swatch layout-swatch-own"></span>
+            <span>Layout colours</span>
+          </button>
           <button class="theme-option" type="button" data-theme="auto">
             <span class="theme-swatch theme-swatch-auto"></span>
             <span>Match my device</span>
@@ -469,6 +478,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.18</span> Themes now work with every layout (e.g. Terminal in Sage): pick "Layout colours" for the layout's own look. The new layouts remember their own theme, so the Original layout keeps yours. Sage: the Select button stays readable when pressed, tidier filter chips (Untouched 14d+ included) with counts in small bubbles, and on big screens the page is wider with tasks in two columns (three on very wide screens).</li>
           <li><span class="changelog-version">v12.17</span> New Settings &rarr; Appearance &rarr; Layout: keep the Original look (the default) or switch to one of three fresh light designs &mdash; Paper (crisp white and blue), Sage (soft green, lists in a side menu, tasks on cards) or Linen &amp; Clay (warm cream, a large date and summary cards for overdue, due today and today's list). Themes still apply to the Original layout.</li>
           <li><span class="changelog-version">v12.16</span> On the login page the "Sync with GitHub" box now tucks itself away once sync is set up and tested, leaving just the "Syncing with GitHub" line. It also has a Close button.</li>
           <li><span class="changelog-version">v12.15</span> No more brief white, half-drawn page when the app opens: your theme is applied straight away, and a "Loading your tasks&hellip;" note shows until your latest tasks are on screen.</li>
