@@ -232,7 +232,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.18</span></h2>
+      <h2>Settings <span class="settings-version">v12.19</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -428,17 +428,22 @@
       <div class="accordion-content" id="securityContent">
         <p class="settings-hint" id="securityHint">Add a password to show a lock screen when you open this app. This is a basic deterrent, not real encryption &mdash; anyone who can view this file's source can bypass it. For real protection, use Data Encryption below.</p>
         <div id="passwordStatus" class="password-status"></div>
+        <!-- each set of password boxes is its own form, so browsers never pair them with the task boxes and offer to "save a password" -->
+        <form class="pw-form" autocomplete="off">
         <input type="password" id="newPasswordInput" class="password-input" placeholder="New password" autocomplete="new-password">
         <button id="setPasswordBtn" class="export-all-btn" type="button">Set Password</button>
         <button id="removePasswordBtn" class="export-all-btn remove-password-btn" type="button" style="display:none;">Remove Password</button>
+        </form>
 
         <hr class="settings-divider">
         <p class="settings-hint"><strong>Data Encryption.</strong> Encrypts your whole list &mdash; tasks, archive, categories, assigned-to / assigned-by lists, reminder email and settings (AES-256) &mdash; on this device and in your file on GitHub, so nobody can read it without your passphrase. You'll be asked for the passphrase when you open the list, on every device. <strong>If you forget the passphrase, your list cannot be recovered</strong> &mdash; keep a CSV export as a backup. CSV exports and the Summary Report are not encrypted.</p>
         <div id="encStatus" class="password-status"></div>
+        <form class="pw-form" autocomplete="off">
         <input type="password" id="encPassInput" class="password-input" placeholder="New passphrase (at least 8 characters)" autocomplete="new-password">
         <input type="password" id="encPassConfirm" class="password-input" placeholder="Confirm passphrase" autocomplete="new-password">
         <button id="encSetBtn" class="export-all-btn" type="button">Turn On Encryption</button>
         <button id="encOffBtn" class="export-all-btn remove-password-btn" type="button" style="display:none;">Turn Off Encryption</button>
+        </form>
         <div id="encMsg" class="import-status"></div>
       </div>
     </div>
@@ -478,6 +483,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.19</span> Browsers no longer offer to "save a password" when you add a task: the lock-screen, app-password and encryption passphrase boxes are now kept separate from the task boxes.</li>
           <li><span class="changelog-version">v12.18</span> Themes now work with every layout (e.g. Terminal in Sage): pick "Layout colours" for the layout's own look. The new layouts remember their own theme, so the Original layout keeps yours. Sage: the Select button stays readable when pressed, tidier filter chips (Untouched 14d+ included) with counts in small bubbles, and on big screens the page is wider with tasks in two columns (three on very wide screens).</li>
           <li><span class="changelog-version">v12.17</span> New Settings &rarr; Appearance &rarr; Layout: keep the Original look (the default) or switch to one of three fresh light designs &mdash; Paper (crisp white and blue), Sage (soft green, lists in a side menu, tasks on cards) or Linen &amp; Clay (warm cream, a large date and summary cards for overdue, due today and today's list). Themes still apply to the Original layout.</li>
           <li><span class="changelog-version">v12.16</span> On the login page the "Sync with GitHub" box now tucks itself away once sync is set up and tested, leaving just the "Syncing with GitHub" line. It also has a Close button.</li>
@@ -605,8 +611,10 @@
       <h2 id="lockTitle">Locked</h2>
     </div>
     <p class="settings-hint" id="lockHint">Enter your password to view your to-do list.</p>
+    <form class="pw-form" autocomplete="off">
     <input type="password" id="unlockInput" class="password-input" placeholder="Password" autocomplete="current-password">
     <button id="unlockBtn" class="export-all-btn" type="button">Unlock</button>
+    </form>
     <div id="unlockError" class="unlock-error"></div>
   </div>
 </div>

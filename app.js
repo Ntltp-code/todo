@@ -3269,6 +3269,9 @@
     save();
     render();
   });
+  // the password boxes sit in their own small forms (see app.html); pressing Enter in one must
+  // never submit it, which would reload the page
+  document.querySelectorAll('form.pw-form').forEach(f => f.addEventListener('submit', e => e.preventDefault()));
   lockBtn.addEventListener('click', showLock);
   unlockBtn.addEventListener('click', attemptUnlock);
   unlockInput.addEventListener('keydown', e => {
