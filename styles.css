@@ -2605,3 +2605,10 @@ body.theme-warm .modal, body.theme-warmdark .modal { overflow-x:hidden; overflow
 /* the New Task window can be taller than a small screen, so it scrolls too */
 .new-task-window:not(.task-edit-window) { max-height:calc(100vh - 32px); overflow-y:auto; }
 @supports (height: 100dvh) { .new-task-window:not(.task-edit-window) { max-height:calc(100dvh - 32px); } }
+
+/* ===== v12.15: no white flash or half-drawn list while the app starts ===== */
+.boot-msg { display:none; }
+html.booting .boot-msg { display:block; text-align:center; margin:48px 0; opacity:.7; font-size:15px; }
+html.booting .tabs-bar, html.booting .quick-add, html.booting #filterIndicator, html.booting #listHeader,
+html.booting #list, html.booting #bulkBar, html.booting #emptyMsg, html.booting .sheet footer,
+html.booting #summaryPanel, html.booting .footer-brand { display:none !important; }

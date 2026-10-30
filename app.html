@@ -15,6 +15,22 @@
 <script src="auth-gate.js"></script>
 </head>
 <body>
+<script>
+/* paint in the saved theme straight away, and hide the list until the tasks are in */
+(function () {
+  var u = (new URLSearchParams(location.search).get('u') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '');
+  var t = null;
+  try {
+    t = localStorage.getItem('todo_theme_' + u);
+    if (!t) { var c = JSON.parse(localStorage.getItem('todo_cache_' + u) || '{}'); t = c.data && c.data.work_theme; }
+  } catch (e) {}
+  if (['auto', 'warm', 'warmdark', 'light', 'dark', 'bw', 'terminal'].indexOf(t) < 0) t = 'auto';
+  var dark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+  var shown = t === 'auto' ? (dark ? 'warmdark' : 'warm') : t;
+  if (shown !== 'light') document.body.classList.add('theme-' + shown);
+  document.documentElement.classList.add('booting');
+})();
+</script>
 
 <div class="pad">
   <div class="perf"></div>
@@ -40,6 +56,7 @@
       <p class="header-meta"><span id="dateLabel">today</span></p>
       <p class="header-version" id="headerVersion"></p>
     </header>
+    <p class="boot-msg" aria-live="polite">Loading your tasks&hellip;</p>
 
     <div class="tabs-bar">
     <div class="tabs" role="tablist">
@@ -197,7 +214,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.14</span></h2>
+      <h2>Settings <span class="settings-version">v12.15</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -411,6 +428,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.15</span> No more brief white, half-drawn page when the app opens: your theme is applied straight away, and a "Loading your tasks&hellip;" note shows until your latest tasks are on screen.</li>
           <li><span class="changelog-version">v12.14</span> Fixed pop-ups (the Today list on opening, Settings, the New Task window) not scrolling in the Warm, Warm Dark and "Match my device" themes, where the page behind scrolled instead. The page is now locked while a pop-up is open, and pop-ups size themselves to the visible screen on phones and tablets.</li>
           <li><span class="changelog-version">v12.13</span> Added a third user, Jonny, listed first on the login page. Jonny sets up his own PIN the first time he picks his name on the login page, and gets his own list.</li>
           <li><span class="changelog-version">v12.12</span> You can now change your PIN: on the login page, pick your name and choose "Change PIN". You'll need your current PIN first. The new PIN is saved on this device and, when sync is set up, on GitHub so your other devices use it too (only your own PIN is updated there).</li>

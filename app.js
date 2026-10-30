@@ -296,6 +296,11 @@
     document.querySelectorAll('.theme-option').forEach(btn => {
       btn.classList.toggle('selected', btn.dataset.theme === theme);
     });
+    // a plain copy for the start-up script in app.html, which can't wait for (or decrypt) the synced data
+    try {
+      const u = (new URLSearchParams(location.search).get('u') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '');
+      localStorage.setItem('todo_theme_' + u, theme);
+    } catch (e) {}
   }
 
   async function selectTheme(theme) {
@@ -590,6 +595,7 @@
       showLock();
     }
     render();
+    document.documentElement.classList.remove('booting');
     if (!passwordHash || encryptionOn()) {
       maybeShowDueSummary();
     }
