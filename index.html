@@ -62,7 +62,7 @@ input.masked{-webkit-text-security:disc}
     <label for="branch">Branch</label>
     <input id="branch" autocomplete="off" spellcheck="false">
     <label for="token">Access token (stays on this device only)</label>
-    <input id="token" type="text" class="masked" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="github_pat_...">
+    <input id="token" type="text" class="masked" style="-webkit-text-security:disc" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="github_pat_...">
     <button class="pri" id="saveCfg" type="button">Save and test</button>
     <button class="link" id="closeCfg" type="button" style="margin-left:16px">Close</button>
     <div id="msg"></div>
@@ -74,16 +74,16 @@ input.masked{-webkit-text-security:disc}
   <h2 id="pinTitle"></h2>
   <div class="note" id="pinHelp"></div>
   <label for="pin1" id="pin1l">PIN</label>
-  <input id="pin1" type="text" class="masked" inputmode="numeric" maxlength="4" autocomplete="off">
-  <div id="pin2wrap" hidden><label for="pin2" id="pin2l">Confirm PIN</label><input id="pin2" type="text" class="masked" inputmode="numeric" maxlength="4" autocomplete="off"></div>
-  <div id="pin3wrap" hidden><label for="pin3">Confirm new PIN</label><input id="pin3" type="text" class="masked" inputmode="numeric" maxlength="4" autocomplete="off"></div>
+  <input id="pin1" type="text" class="masked" style="-webkit-text-security:disc" inputmode="numeric" maxlength="4" autocomplete="off">
+  <div id="pin2wrap" hidden><label for="pin2" id="pin2l">Confirm PIN</label><input id="pin2" type="text" class="masked" style="-webkit-text-security:disc" inputmode="numeric" maxlength="4" autocomplete="off"></div>
+  <div id="pin3wrap" hidden><label for="pin3">Confirm new PIN</label><input id="pin3" type="text" class="masked" style="-webkit-text-security:disc" inputmode="numeric" maxlength="4" autocomplete="off"></div>
   <div id="pinErr"></div>
   <div class="row"><button class="link" id="pinChange" type="button" hidden>Change PIN</button><button class="sec" id="pinCancel" type="button">Cancel</button><button class="pri" id="pinOk" type="button" style="margin:0">Continue</button></div>
 </dialog>
 
 <script src="config.js"></script>
 <script>/* secret boxes are plain text boxes drawn as dots, so browsers never offer to "save a password"; a browser that cannot draw the dots gets a real password box instead */
-try { if (!CSS.supports("-webkit-text-security", "disc")) document.querySelectorAll("input.masked").forEach(function (i) { i.type = "password"; }); } catch (e) {}</script>
+document.querySelectorAll("input.masked").forEach(function (i) { var s = ""; try { s = getComputedStyle(i).webkitTextSecurity || ""; } catch (e) {} if (s !== "disc") i.type = "password"; });</script>
 <script src="gh-storage.js"></script>
 <script>
 (function () {

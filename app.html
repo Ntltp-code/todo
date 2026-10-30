@@ -236,7 +236,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.21</span></h2>
+      <h2>Settings <span class="settings-version">v12.22</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -434,7 +434,7 @@
         <div id="passwordStatus" class="password-status"></div>
         <!-- each set of password boxes is its own form, so browsers never pair them with the task boxes and offer to "save a password" -->
         <form class="pw-form" autocomplete="off">
-        <input type="text" id="newPasswordInput" class="password-input masked" placeholder="New password" autocomplete="off" spellcheck="false" autocapitalize="off">
+        <input type="text" id="newPasswordInput" class="password-input masked" style="-webkit-text-security:disc" placeholder="New password" autocomplete="off" spellcheck="false" autocapitalize="off">
         <button id="setPasswordBtn" class="export-all-btn" type="button">Set Password</button>
         <button id="removePasswordBtn" class="export-all-btn remove-password-btn" type="button" style="display:none;">Remove Password</button>
         </form>
@@ -443,8 +443,8 @@
         <p class="settings-hint"><strong>Data Encryption.</strong> Encrypts your whole list &mdash; tasks, archive, categories, assigned-to / assigned-by lists, reminder email and settings (AES-256) &mdash; on this device and in your file on GitHub, so nobody can read it without your passphrase. You'll be asked for the passphrase when you open the list, on every device. <strong>If you forget the passphrase, your list cannot be recovered</strong> &mdash; keep a CSV export as a backup. CSV exports and the Summary Report are not encrypted.</p>
         <div id="encStatus" class="password-status"></div>
         <form class="pw-form" autocomplete="off">
-        <input type="text" id="encPassInput" class="password-input masked" placeholder="New passphrase (at least 8 characters)" autocomplete="off" spellcheck="false" autocapitalize="off">
-        <input type="text" id="encPassConfirm" class="password-input masked" placeholder="Confirm passphrase" autocomplete="off" spellcheck="false" autocapitalize="off">
+        <input type="text" id="encPassInput" class="password-input masked" style="-webkit-text-security:disc" placeholder="New passphrase (at least 8 characters)" autocomplete="off" spellcheck="false" autocapitalize="off">
+        <input type="text" id="encPassConfirm" class="password-input masked" style="-webkit-text-security:disc" placeholder="Confirm passphrase" autocomplete="off" spellcheck="false" autocapitalize="off">
         <button id="encSetBtn" class="export-all-btn" type="button">Turn On Encryption</button>
         <button id="encOffBtn" class="export-all-btn remove-password-btn" type="button" style="display:none;">Turn Off Encryption</button>
         </form>
@@ -487,6 +487,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.22</span> Fixed passphrase and PIN boxes sometimes showing what you type instead of dots after the last update. The dots no longer depend on the stylesheet, a box that can't show dots becomes a normal hidden password box, and updates now always fetch every file fresh so the page and its stylesheet can't get out of step.</li>
           <li><span class="changelog-version">v12.21</span> Stopped the browser's "Save password?" pop-up for good: the PIN boxes on the login page, the GitHub token box, the lock screen and the password/passphrase boxes in Settings still show dots as you type, but browsers no longer treat them as passwords (entering your PIN was the main trigger).</li>
           <li><span class="changelog-version">v12.20</span> A&minus; and A+ buttons in the task window's title bar make its text smaller or larger. Your size is remembered and follows you to your other devices.</li>
           <li><span class="changelog-version">v12.19</span> Browsers no longer offer to "save a password" when you add a task: the lock-screen, app-password and encryption passphrase boxes are now kept separate from the task boxes.</li>
@@ -618,7 +619,7 @@
     </div>
     <p class="settings-hint" id="lockHint">Enter your password to view your to-do list.</p>
     <form class="pw-form" autocomplete="off">
-    <input type="text" id="unlockInput" class="password-input masked" placeholder="Password" autocomplete="off" spellcheck="false" autocapitalize="off">
+    <input type="text" id="unlockInput" class="password-input masked" style="-webkit-text-security:disc" placeholder="Password" autocomplete="off" spellcheck="false" autocapitalize="off">
     <button id="unlockBtn" class="export-all-btn" type="button">Unlock</button>
     </form>
     <div id="unlockError" class="unlock-error"></div>
@@ -662,7 +663,7 @@
 </div>
 
 <script>/* secret boxes are plain text boxes drawn as dots, so browsers never offer to "save a password"; a browser that cannot draw the dots gets a real password box instead */
-try { if (!CSS.supports("-webkit-text-security", "disc")) document.querySelectorAll("input.masked").forEach(function (i) { i.type = "password"; }); } catch (e) {}</script>
+document.querySelectorAll("input.masked").forEach(function (i) { var s = ""; try { s = getComputedStyle(i).webkitTextSecurity || ""; } catch (e) {} if (s !== "disc") i.type = "password"; });</script>
 <script src="gh-storage.js"></script>
 <script src="app.js"></script>
 <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}</script>
