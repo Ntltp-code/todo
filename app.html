@@ -27,7 +27,13 @@
   if (['auto', 'warm', 'warmdark', 'light', 'dark', 'bw', 'terminal'].indexOf(t) < 0) t = 'auto';
   var dark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
   var shown = t === 'auto' ? (dark ? 'warmdark' : 'warm') : t;
-  if (shown !== 'light') document.body.classList.add('theme-' + shown);
+  var l = null;
+  try {
+    l = localStorage.getItem('todo_layout_' + u);
+    if (!l) { var c2 = JSON.parse(localStorage.getItem('todo_cache_' + u) || '{}'); l = c2.data && c2.data.work_layout; }
+  } catch (e) {}
+  if (['paper', 'sage', 'linen'].indexOf(l) >= 0) document.body.classList.add('layout-' + l);
+  else if (shown !== 'light') document.body.classList.add('theme-' + shown);
   document.documentElement.classList.add('booting');
 })();
 </script>
@@ -57,6 +63,13 @@
       <p class="header-version" id="headerVersion"></p>
     </header>
     <p class="boot-msg" aria-live="polite">Loading your tasks&hellip;</p>
+
+    <!-- summary cards, shown only in the Linen & Clay layout -->
+    <div class="layout-cards" aria-label="Summary">
+      <button type="button" class="layout-card card-overdue" data-click="overdueTopTrigger"><span class="layout-card-num" id="cardOverdueCount">0</span><span class="layout-card-label">Overdue</span></button>
+      <button type="button" class="layout-card card-due" data-click="dueTodayTopTrigger"><span class="layout-card-num" id="cardDueCount">0</span><span class="layout-card-label">Due today</span></button>
+      <button type="button" class="layout-card card-today" data-click="tabToday"><span class="layout-card-num" id="cardTodayCount">0</span><span class="layout-card-label">On today's list</span></button>
+    </div>
 
     <div class="tabs-bar">
     <div class="tabs" role="tablist">
@@ -214,11 +227,38 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.16</span></h2>
+      <h2>Settings <span class="settings-version">v12.17</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
     <div class="settings-group-label">Appearance</div>
+    <div class="accordion-section">
+      <button class="accordion-header" type="button" data-target="layoutContent">
+        <span>Layout</span>
+        <span class="accordion-arrow">&#9656;</span>
+      </button>
+      <div class="accordion-content" id="layoutContent">
+        <p class="settings-hint">Pick how the page is laid out. Paper, Sage and Linen &amp; Clay are light designs with their own colours; themes apply to the Original layout.</p>
+        <div class="theme-options" id="layoutOptions">
+          <button class="theme-option layout-option" type="button" data-layout="original">
+            <span class="theme-swatch layout-swatch-original"></span>
+            <span>Original</span>
+          </button>
+          <button class="theme-option layout-option" type="button" data-layout="paper">
+            <span class="theme-swatch layout-swatch-paper"></span>
+            <span>Paper</span>
+          </button>
+          <button class="theme-option layout-option" type="button" data-layout="sage">
+            <span class="theme-swatch layout-swatch-sage"></span>
+            <span>Sage</span>
+          </button>
+          <button class="theme-option layout-option" type="button" data-layout="linen">
+            <span class="theme-swatch layout-swatch-linen"></span>
+            <span>Linen &amp; Clay</span>
+          </button>
+        </div>
+      </div>
+    </div>
     <div class="accordion-section">
       <button class="accordion-header" type="button" data-target="themeContent">
         <span>Theme</span>
@@ -226,6 +266,7 @@
       </button>
       <div class="accordion-content" id="themeContent">
         <p class="settings-hint">Pick a colour scheme. "Match my device" switches between Warm and Warm Dark with your device's light/dark setting.</p>
+        <p class="settings-hint layout-theme-note">Themes only change the Original layout. Switch Layout back to Original to use them.</p>
         <div class="theme-options" id="themeOptions">
           <button class="theme-option" type="button" data-theme="auto">
             <span class="theme-swatch theme-swatch-auto"></span>
@@ -428,6 +469,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.17</span> New Settings &rarr; Appearance &rarr; Layout: keep the Original look (the default) or switch to one of three fresh light designs &mdash; Paper (crisp white and blue), Sage (soft green, lists in a side menu, tasks on cards) or Linen &amp; Clay (warm cream, a large date and summary cards for overdue, due today and today's list). Themes still apply to the Original layout.</li>
           <li><span class="changelog-version">v12.16</span> On the login page the "Sync with GitHub" box now tucks itself away once sync is set up and tested, leaving just the "Syncing with GitHub" line. It also has a Close button.</li>
           <li><span class="changelog-version">v12.15</span> No more brief white, half-drawn page when the app opens: your theme is applied straight away, and a "Loading your tasks&hellip;" note shows until your latest tasks are on screen.</li>
           <li><span class="changelog-version">v12.14</span> Fixed pop-ups (the Today list on opening, Settings, the New Task window) not scrolling in the Warm, Warm Dark and "Match my device" themes, where the page behind scrolled instead. The page is now locked while a pop-up is open, and pop-ups size themselves to the visible screen on phones and tablets.</li>

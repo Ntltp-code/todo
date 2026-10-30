@@ -2612,3 +2612,176 @@ html.booting .boot-msg { display:block; text-align:center; margin:48px 0; opacit
 html.booting .tabs-bar, html.booting .quick-add, html.booting #filterIndicator, html.booting #listHeader,
 html.booting #list, html.booting #bulkBar, html.booting #emptyMsg, html.booting .sheet footer,
 html.booting #summaryPanel, html.booting .footer-brand { display:none !important; }
+
+/* ===== v12.17: layouts (Settings > Appearance > Layout) ===== */
+/* Original is everything above. Paper, Sage and Linen & Clay are light designs with their own
+   colours; while one is on, no theme class is set (see applyTheme), so they build on the plain light base. */
+.layout-cards { display:none; }
+.layout-swatch-original { background: linear-gradient(135deg, #FAF9F5 50%, #C96442 50%); }
+.layout-swatch-paper { background: linear-gradient(135deg, #FFFFFF 50%, #2563EB 50%); }
+.layout-swatch-sage { background: linear-gradient(135deg, #F4F6F2 50%, #2E6A4F 50%); }
+.layout-swatch-linen { background: linear-gradient(135deg, #FBF8F3 50%, #A84A28 50%); }
+.layout-theme-note { display:none; }
+body[class*="layout-"] .layout-theme-note { display:block; font-weight:700; }
+body[class*="layout-"] #themeOptions { opacity:.45; }
+
+body.layout-paper {
+  --paper:#FFFFFF; --paper-dark:#F5F6F8; --ink:#1F2329; --ink-muted:#5B6370; --rule:#E4E7EC;
+  --stamp:#B42318; --check:#2F7D4F; --check-bg:#E8F5EC; --accent-blue:#2563EB; --outer-bg:#F5F6F8;
+  --due-highlight:#EEF3FF; --priority-medium:#8A5300; --overdue:#B42318; --due:#1D4ED8;
+  --lf:'Inter', system-ui, sans-serif; --tag-high:#FEF1F0; --tag-medium:#FFF6E5; --tag-low:#EFF6EC;
+}
+body.layout-sage {
+  --paper:#FFFFFF; --paper-dark:#EEF1EC; --ink:#1E2A23; --ink-muted:#55615A; --rule:#DCE2DA;
+  --stamp:#A8251A; --check:#2E6A4F; --check-bg:#E3EEE6; --accent-blue:#2E6A4F; --outer-bg:#F4F6F2;
+  --due-highlight:#E8F0FB; --priority-medium:#8A5A00; --overdue:#A8251A; --due:#1F56A8;
+  --lf:'Plus Jakarta Sans', system-ui, sans-serif; --tag-high:#FDECEA; --tag-medium:#FBF0D9; --tag-low:#E6EFE2;
+}
+body.layout-linen {
+  --paper:#FFFFFF; --paper-dark:#F5F0E8; --ink:#2A241F; --ink-muted:#6F655B; --rule:#ECE5DB;
+  --stamp:#A62F1F; --check:#3D5B33; --check-bg:#EAF2E4; --accent-blue:#A84A28; --outer-bg:#FBF8F3;
+  --due-highlight:#F2F6FD; --priority-medium:#7A5000; --overdue:#A62F1F; --due:#1E4F9A;
+  --lf:'DM Sans', system-ui, sans-serif; --tag-high:#FBE7E2; --tag-medium:#FCF1D9; --tag-low:#EAF2E4;
+}
+
+/* shared by all three */
+body[class*="layout-"] *:not(svg):not(svg *) { font-family:var(--lf); }
+body[class*="layout-"] { accent-color:var(--accent-blue); }
+body[class*="layout-"] .perf,
+body[class*="layout-"] .title-logo,
+body[class*="layout-"] .footer-brand-logo { display:none; }
+body[class*="layout-"] header h1 { text-transform:none; letter-spacing:-0.02em; font-weight:700; }
+body[class*="layout-"] .header-meta { text-transform:none; letter-spacing:0 !important; font-size:15px; }
+body[class*="layout-"] .app-label:not(:empty) { text-transform:none; letter-spacing:0; font-weight:600; font-size:13px; padding:4px 10px; border-radius:999px; background:color-mix(in srgb, var(--accent-blue) 12%, #fff); color:var(--accent-blue); }
+body[class*="layout-"] .tabs .tab { text-transform:none; letter-spacing:0; font-size:15px; font-weight:500; }
+body[class*="layout-"] .tabs .tab.active { font-weight:700; }
+body[class*="layout-"] .header-search { border-radius:10px; }
+body[class*="layout-"] .settings-btn, body[class*="layout-"] .lock-btn { border-radius:10px; border-color:var(--rule); color:var(--ink); }
+body[class*="layout-"] .quick-add .new-task-btn { text-transform:none; letter-spacing:0; font-weight:700; border-radius:12px; box-shadow:none; }
+body[class*="layout-"] .group-divider { border-top:0; padding-top:18px; }
+body[class*="layout-"] .group-divider span { letter-spacing:.08em; font-weight:600; }
+body[class*="layout-"] .list-header { border-bottom:1px solid var(--rule); }
+body[class*="layout-"] li.item { padding:13px 6px; }
+body[class*="layout-"] li.item .task-text { font-size:15px; font-weight:500; }
+body[class*="layout-"] li.item .box { border-radius:5px; border-color:var(--ink-muted); }
+body[class*="layout-"] .priority-tag { border:0 !important; border-radius:6px; padding:3px 10px; letter-spacing:0; text-transform:none; font-weight:600; font-size:12px; }
+body[class*="layout-"] .priority-tag.high { background:var(--tag-high); }
+body[class*="layout-"] .priority-tag.medium { background:var(--tag-medium); }
+body[class*="layout-"] .priority-tag.low { background:var(--tag-low); }
+body[class*="layout-"] .toolbar-chips .filter-trigger, body[class*="layout-"] .select-btn { font-weight:600; }
+body[class*="layout-"] #sortSelect { border-radius:8px; }
+body[class*="layout-"] .modal, body[class*="layout-"] .new-task-window { border-radius:14px; overflow-x:hidden; overflow-y:auto; }
+body[class*="layout-"] .modal-header h2 { text-transform:none; letter-spacing:0; }
+body[class*="layout-"] .export-all-btn, body[class*="layout-"] .due-summary-secondary,
+body[class*="layout-"] .task-edit-footer .save-only-task { border-radius:10px; letter-spacing:0; text-transform:none; }
+body[class*="layout-"] .footer-brand { border-top-style:solid; border-color:var(--rule); letter-spacing:0; text-transform:none; font-weight:600; }
+
+/* ---- Paper: crisp white sheet, blue accent, title on the left ---- */
+body.layout-paper .pad { border:1px solid var(--rule); border-radius:16px; box-shadow:none; overflow:hidden; }
+body.layout-paper .sheet { padding:32px 40px 28px; }
+body.layout-paper header { text-align:left; padding-left:0; border-bottom:0; margin-bottom:6px; }
+body.layout-paper .title-row { justify-content:flex-start; }
+body.layout-paper header h1 { font-size:34px; }
+body.layout-paper .header-meta { color:#4B5563; }
+body.layout-paper .tabs-bar { border-bottom:1px solid var(--rule); }
+body.layout-paper .tabs .tab { padding:12px 2px; margin-right:24px; }
+body.layout-paper .quick-add { margin:22px 0 10px; }
+body.layout-paper .quick-add .new-task-btn { width:min(100%, 320px); padding:15px 32px; }
+body.layout-paper .group-divider span { font-size:12px; color:#4B5563; }
+body.layout-paper li.item { border-bottom-color:#EEF0F3; }
+
+/* ---- Sage: soft green, lists in a side menu, tasks on cards ---- */
+body.layout-sage .pad { background:transparent; box-shadow:none; }
+body.layout-sage .sheet { position:relative; padding:12px 0 24px; }
+body.layout-sage header { text-align:left; border-bottom:0; padding:0 100px 0 0; min-height:0; display:flex; flex-direction:column; align-items:stretch; }
+body.layout-sage header h1 { order:1; }
+body.layout-sage .header-meta { order:2; }
+body.layout-sage header p.header-version { order:3; }
+body.layout-sage .header-search { order:4; }
+body.layout-sage .title-row { justify-content:flex-start; }
+body.layout-sage header h1 { font-size:28px; font-weight:800; }
+body.layout-sage .header-meta { font-size:14px; }
+body.layout-sage .header-search { position:static; display:block; width:100%; height:44px; margin-top:16px; padding:0 14px; border:0; border-radius:12px; background:#FFFFFF; box-shadow:0 1px 2px rgba(30,42,35,.08); font-size:14px; }
+body.layout-sage .tabs-bar { border-bottom:0; }
+body.layout-sage .tabs { gap:6px; }
+body.layout-sage .tabs .tab { border:0; border-radius:10px; padding:10px 14px; margin:0; color:#33403A; }
+body.layout-sage .tabs .tab.active { background:#FFFFFF; box-shadow:0 1px 2px rgba(30,42,35,.08); color:var(--ink); border:0; }
+body.layout-sage .toolbar-chips .filter-trigger, body.layout-sage .select-btn, body.layout-sage #sortSelect { border:0; background:#FFFFFF; box-shadow:0 1px 2px rgba(30,42,35,.08); }
+body.layout-sage .chip-overdue { color:#A8251A; background:#FDECEA !important; }
+body.layout-sage .chip-due { color:#1F56A8; background:#E8F0FB !important; }
+body.layout-sage .quick-add { justify-content:flex-start; margin:14px 0 6px; }
+body.layout-sage .quick-add .new-task-btn { width:auto; padding:13px 28px; }
+body.layout-sage .list-header { display:none !important; }
+body.layout-sage .group-divider span { font-size:13px; letter-spacing:0; text-transform:none; color:#4A564F; }
+body.layout-sage li.item { background:#FFFFFF; border:0; border-radius:12px; margin-bottom:8px; padding:14px 18px; box-shadow:0 1px 2px rgba(30,42,35,.06); }
+body.layout-sage li.item.due-today { background:color-mix(in srgb, var(--due) 7%, #fff); box-shadow:inset 3px 0 0 var(--due), 0 1px 2px rgba(30,42,35,.06); }
+body.layout-sage li.item.overdue-row { background:color-mix(in srgb, var(--overdue) 8%, #fff); }
+/* desktop: header and lists in a left-hand column, everything else beside it */
+@media (min-width: 900px) {
+  body.layout-sage .sheet { padding-left:272px; min-height:520px; }
+  body.layout-sage header { position:absolute; left:0; top:12px; width:240px; height:150px; padding:0; margin:0; }
+  body.layout-sage .settings-btn { top:0; right:0; }
+  body.layout-sage .sync-dot { top:12px; right:40px; }
+  body.layout-sage .lock-btn { left:auto; right:80px; }
+  body.layout-sage .tabs { position:absolute; left:0; top:176px; width:240px; flex-direction:column; border:0; }
+  body.layout-sage .tabs .tab { display:flex; justify-content:space-between; align-items:center; height:44px; text-align:left; }
+  body.layout-sage .tabs-bar .sort-row { margin:0; padding:0; }
+  /* tasks sit on cards as two lines, so the wide column grid isn't needed */
+  body.layout-sage li.item .row, body.layout-sage li.item .row.grid-done, body.layout-sage li.item .row.grid-pending { display:flex; flex-wrap:wrap; align-items:center; column-gap:10px; row-gap:4px; }
+  body.layout-sage li.item .row .box { flex:0 0 18px; order:1; }
+  body.layout-sage li.item .row .task-text { flex:1 1 calc(100% - 130px); min-width:0; order:2; }
+  body.layout-sage li.item .row .priority-tag { order:3; flex:0 0 auto; }
+  body.layout-sage li.item .row .cell { order:4; flex:0 0 auto; max-width:48%; }
+  body.layout-sage li.item .row .cell:empty { display:none; }
+  body.layout-sage li.item .row .cell:first-of-type { margin-left:28px; }
+}
+@media (max-width: 899px) {
+  body.layout-sage .header-search { position:absolute; top:0; right:48px; width:180px; margin:0; }
+}
+@media (max-width: 640px) {
+  body.layout-sage .sheet { padding:12px; }
+  body.layout-sage .header-search { width:40px; height:40px; padding:0 8px 0 32px; box-shadow:none; }
+  body.layout-sage .header-search:focus, body.layout-sage .header-search:not(:placeholder-shown) { width:calc(100vw - 72px); }
+}
+
+/* ---- Linen & Clay: warm cream, serif date, summary cards ---- */
+body.layout-linen .pad { border:1px solid var(--rule); border-radius:20px; box-shadow:none; overflow:hidden; }
+body.layout-linen .sheet { padding:32px 36px 26px; }
+body.layout-linen header { display:flex; flex-direction:column; align-items:flex-start; text-align:left; padding-left:0; border-bottom:0; margin-bottom:18px; }
+body.layout-linen .title-row { justify-content:flex-start; }
+body.layout-linen header h1 { font-size:13px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--accent-blue); }
+body.layout-linen .app-label:not(:empty) { font-size:11px; padding:2px 8px; }
+body[class*="layout-"].layout-linen .header-meta { order:2; margin-top:6px !important; font-family:'Fraunces', Georgia, serif; font-size:40px; font-weight:600; color:var(--ink); letter-spacing:-0.01em !important; line-height:1.1; }
+body.layout-linen header p.header-version { order:3; }
+body.layout-linen .header-search, body.layout-linen .settings-btn { border-radius:999px; }
+body.layout-linen .layout-cards { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px; margin:0 0 22px; }
+body.layout-linen .layout-card { display:flex; flex-direction:column; gap:2px; text-align:left; padding:16px 20px; border-radius:16px; border:1px solid; cursor:pointer; }
+body[class*="layout-"].layout-linen .layout-card-num { font-family:'Fraunces', Georgia, serif; font-size:32px; font-weight:600; line-height:1.1; }
+body.layout-linen .layout-card-label { font-size:14px; font-weight:600; }
+body.layout-linen .card-overdue { background:#FFF4F0; border-color:#F1D2C8; color:#7A2417; }
+body.layout-linen .card-overdue .layout-card-num { color:#A62F1F; }
+body.layout-linen .card-due { background:#F2F6FD; border-color:#CFDDF2; color:#193F78; }
+body.layout-linen .card-due .layout-card-num { color:#1E4F9A; }
+body.layout-linen .card-today { background:#FFFAEB; border-color:#ECE3C7; color:#5E4500; }
+body.layout-linen .card-today .layout-card-num { color:#7A5A00; }
+body.layout-linen .tabs-bar { border-bottom:1px solid #F0EAE1; padding-bottom:12px; }
+body.layout-linen .tabs { background:var(--paper-dark); border:0; border-radius:999px; padding:4px; gap:4px; }
+body.layout-linen .tabs .tab { border:0; border-radius:999px; padding:8px 16px; margin:0; color:#4A4038; }
+body.layout-linen .tabs .tab.active { background:#FFFFFF; border:0; box-shadow:0 1px 2px rgba(42,36,31,.12); color:var(--ink); }
+body.layout-linen .toolbar-chips .chip-due, body.layout-linen .toolbar-chips .chip-overdue { display:none; }
+body.layout-linen .quick-add .new-task-btn { border-radius:999px; width:auto; padding:14px 34px; }
+body[class*="layout-"].layout-linen .group-divider span { font-family:'Fraunces', Georgia, serif; font-size:18px; font-weight:600; letter-spacing:0; text-transform:none; color:var(--ink); }
+body.layout-linen li.item { border-bottom-color:#F3EEE6; }
+body.layout-linen .priority-tag { border-radius:999px; }
+@media (max-width: 640px) {
+  /* the four tabs share the width evenly on phones */
+  body[class*="layout-"] .tabs { width:100%; box-sizing:border-box; }
+  body[class*="layout-"] .tabs .tab { flex:1 1 auto; min-width:0; margin:0; padding:8px 2px; font-size:12px; text-align:center; justify-content:center; white-space:nowrap; }
+  body[class*="layout-"] .tabs .tab .tab-count { margin-left:2px; padding:0 4px; }
+  body.layout-paper .sheet, body.layout-linen .sheet { padding:18px 14px; }
+  body[class*="layout-"].layout-linen .header-meta { font-size:28px; }
+  body.layout-linen .layout-cards { gap:8px; }
+  body.layout-linen .layout-card { padding:12px; }
+  body[class*="layout-"].layout-linen .layout-card-num { font-size:24px; }
+  body.layout-linen .layout-card-label { font-size:12px; }
+}

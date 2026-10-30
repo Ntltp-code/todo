@@ -84,6 +84,7 @@
   const ASSIGNEES_KEY = STORAGE_PREFIX + 'assignees';
   const ASSIGNED_BY_KEY = STORAGE_PREFIX + 'assignedByOptions';
   const THEME_KEY = STORAGE_PREFIX + 'theme';
+  const LAYOUT_KEY = STORAGE_PREFIX + 'layout';
   const LOCAL_UPDATED_KEY = STORAGE_PREFIX + 'localDataUpdatedAt';
   let localDataUpdatedAt = 0;
   const LAST_EXPORT_KEY = STORAGE_PREFIX + 'lastExportAt';
@@ -277,6 +278,9 @@
   const VALID_THEMES = ['auto', 'warm', 'warmdark', 'light', 'dark', 'bw', 'terminal'];
 
   let themeSetting = 'auto';
+  const VALID_LAYOUTS = ['original', 'paper', 'sage', 'linen'];
+  const LAYOUT_BAR_COLOURS = { paper: '#2563EB', sage: '#2E6A4F', linen: '#A84A28' };
+  let layoutSetting = 'original';
   const darkQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   if (darkQuery && darkQuery.addEventListener) {
     darkQuery.addEventListener('change', () => { if (themeSetting === 'auto') applyTheme('auto'); });
@@ -287,13 +291,14 @@
     themeSetting = theme;
     const shown = theme === 'auto' ? ((darkQuery && darkQuery.matches) ? 'warmdark' : 'warm') : theme;
     document.body.classList.remove('theme-warm', 'theme-warmdark', 'theme-dark', 'theme-colourful', 'theme-notebook', 'theme-forest', 'theme-ocean', 'theme-sunset', 'theme-slate', 'theme-bw', 'theme-wb', 'theme-terminal');
-    // phones tint their address bar with this; Terminal keeps it black
+    // phones tint their address bar with this; Terminal keeps it black, the new layouts use their own accent
     const themeColour = document.querySelector('meta[name="theme-color"]');
-    if (themeColour) themeColour.content = shown === 'terminal' ? '#000000' : '#C96442';
-    if (shown !== 'light') {
+    if (themeColour) themeColour.content = LAYOUT_BAR_COLOURS[layoutSetting] || (shown === 'terminal' ? '#000000' : '#C96442');
+    // the new layouts bring their own colours, so themes only apply to the Original layout
+    if (shown !== 'light' && layoutSetting === 'original') {
       document.body.classList.add('theme-' + shown);
     }
-    document.querySelectorAll('.theme-option').forEach(btn => {
+    document.querySelectorAll('.theme-option[data-theme]').forEach(btn => {
       btn.classList.toggle('selected', btn.dataset.theme === theme);
     });
     // a plain copy for the start-up script in app.html, which can't wait for (or decrypt) the synced data
@@ -308,8 +313,50 @@
     await queuedStorageSet(THEME_KEY, theme);
   }
 
-  document.querySelectorAll('.theme-option').forEach(btn => {
+  document.querySelectorAll('.theme-option[data-theme]').forEach(btn => {
     btn.addEventListener('click', () => selectTheme(btn.dataset.theme));
+  });
+
+  // layouts: Original (the themes above) or one of the light designs
+  function applyLayout(layout) {
+    if (!VALID_LAYOUTS.includes(layout)) layout = 'original';
+    layoutSetting = layout;
+    VALID_LAYOUTS.forEach(l => document.body.classList.remove('layout-' + l));
+    if (layout !== 'original') {
+      document.body.classList.add('layout-' + layout);
+      if (!document.getElementById('layoutFonts')) {
+        const link = document.createElement('link');
+        link.id = 'layoutFonts';
+        link.rel = 'stylesheet';
+        link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap';
+        document.head.appendChild(link);
+      }
+    }
+    document.querySelectorAll('.layout-option').forEach(btn => {
+      btn.classList.toggle('selected', btn.dataset.layout === layout);
+    });
+    applyTheme(themeSetting);
+    try {
+      const u = (new URLSearchParams(location.search).get('u') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '');
+      localStorage.setItem('todo_layout_' + u, layout);
+    } catch (e) {}
+  }
+
+  async function selectLayout(layout) {
+    applyLayout(layout);
+    await queuedStorageSet(LAYOUT_KEY, layout);
+  }
+
+  document.querySelectorAll('.layout-option').forEach(btn => {
+    btn.addEventListener('click', () => selectLayout(btn.dataset.layout));
+  });
+
+  // Linen & Clay's summary cards just press the matching filter or tab
+  document.querySelectorAll('.layout-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const target = document.getElementById(card.dataset.click);
+      if (target) target.click();
+    });
   });
 
   // Stamp each task that changed since the last save, so sync can tell which edit is newest.
@@ -501,6 +548,12 @@
   });
 
   async function load() {
+    try {
+      const layoutResult = await storageGet(LAYOUT_KEY);
+      applyLayout(layoutResult && layoutResult.value ? layoutResult.value : 'original');
+    } catch (e) {
+      applyLayout('original');
+    }
     try {
       const themeResult = await storageGet(THEME_KEY);
       applyTheme(themeResult && themeResult.value ? themeResult.value : 'auto');
@@ -1531,6 +1584,9 @@
     document.getElementById('tabActiveCount').textContent = openTasks.length - pendingCount;
     document.getElementById('tabDoneCount').textContent = todos.length - openTasks.length;
     document.getElementById('tabTodayCount').textContent = todos.filter(isTodayTask).length;
+    document.getElementById('cardOverdueCount').textContent = overdueCount;
+    document.getElementById('cardDueCount').textContent = dueTodayCount;
+    document.getElementById('cardTodayCount').textContent = todos.filter(isTodayTask).length;
     const staleCount = todos.filter(isStale).length;
     document.getElementById('staleCount').textContent = staleCount;
     document.getElementById('staleTrigger').style.display = staleCount || filterMode === 'stale' ? '' : 'none';
