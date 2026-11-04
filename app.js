@@ -1796,9 +1796,139 @@
     setPage('today');
   });
 
+  // ---------- subtasks and notes typed into the New Task window, held here until the task is added ----------
+  const newEntryList = document.getElementById('newEntryList');
+  const newEntryInput = document.getElementById('newEntryInput');
+  const newEntrySubtaskBtn = document.getElementById('newEntrySubtaskBtn');
+  const newEntryNoteBtn = document.getElementById('newEntryNoteBtn');
+  let newTaskEntries = [];
+  let newEntryType = 'subtask';
+
+  function setNewEntryType(type) {
+    newEntryType = type;
+    newEntrySubtaskBtn.classList.toggle('selected', type === 'subtask');
+    newEntryNoteBtn.classList.toggle('selected', type === 'note');
+  }
+
+  function renderNewEntries() {
+    newEntryList.innerHTML = '';
+    newTaskEntries.forEach(sub => {
+      const isNote = sub.type === 'note';
+      const subRow = document.createElement('div');
+      subRow.className = 'subtask-item' + (sub.done ? ' done' : '') + (isNote ? ' note-entry' : '');
+
+      const subDate = document.createElement('div');
+      subDate.className = 'subtask-date';
+      subDate.textContent = formatDateDDMM(sub.createdAt);
+      subDate.title = 'Date created';
+
+      const subBox = document.createElement('div');
+      if (isNote) {
+        subBox.className = 'subtask-note-icon';
+        subBox.textContent = 'NOTE';
+        subBox.title = 'This is a note (no checkbox)';
+      } else {
+        subBox.className = 'subtask-box';
+        subBox.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg>';
+        subBox.addEventListener('click', () => {
+          sub.done = !sub.done;
+          renderNewEntries();
+        });
+      }
+
+      const subText = document.createElement('div');
+      subText.className = 'subtask-text';
+      subText.textContent = sub.text;
+      subText.title = 'Click to edit';
+      subText.addEventListener('click', () => {
+        const editInput = document.createElement('textarea');
+        editInput.className = 'subtask-edit-input';
+        editInput.maxLength = 5000;
+        editInput.rows = 3;
+        editInput.value = sub.text;
+        subRow.replaceChild(editInput, subText);
+        editInput.focus();
+        editInput.select();
+        editInput.addEventListener('blur', () => {
+          const value = editInput.value.trim();
+          if (value) sub.text = value;
+          renderNewEntries();
+        });
+        editInput.addEventListener('keydown', e => {
+          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); editInput.blur(); }
+          if (e.key === 'Escape') { e.stopPropagation(); editInput.value = sub.text; editInput.blur(); }
+        });
+      });
+
+      const subTypeToggle = document.createElement('button');
+      subTypeToggle.type = 'button';
+      subTypeToggle.className = 'subtask-type-toggle';
+      subTypeToggle.title = isNote ? 'Change to Subtask (adds a checkbox)' : 'Change to Note (removes the checkbox)';
+      subTypeToggle.textContent = isNote ? '→ Subtask' : '→ Note';
+      subTypeToggle.addEventListener('click', () => {
+        sub.type = isNote ? 'subtask' : 'note';
+        if (sub.type === 'note') sub.done = false;
+        renderNewEntries();
+      });
+
+      // nothing is saved yet, so removing one doesn't need a confirmation
+      const subDelete = document.createElement('button');
+      subDelete.type = 'button';
+      subDelete.className = 'subtask-delete';
+      subDelete.setAttribute('aria-label', 'Delete subtask');
+      subDelete.title = 'Delete subtask';
+      subDelete.textContent = '✕';
+      subDelete.addEventListener('click', () => {
+        newTaskEntries = newTaskEntries.filter(s => s !== sub);
+        renderNewEntries();
+      });
+
+      subRow.appendChild(subDate);
+      subRow.appendChild(subBox);
+      subRow.appendChild(subText);
+      subRow.appendChild(subTypeToggle);
+      subRow.appendChild(subDelete);
+      newEntryList.appendChild(subRow);
+    });
+
+    if (newTaskEntries.length === 0) {
+      const emptySub = document.createElement('div');
+      emptySub.className = 'subtask-empty';
+      emptySub.textContent = 'No Subtasks / Notes yet.';
+      newEntryList.appendChild(emptySub);
+    }
+  }
+
+  function addNewEntry() {
+    const value = newEntryInput.value.trim();
+    if (!value) return;
+    newTaskEntries.push({ id: uid(), text: value, done: false, type: newEntryType, createdAt: Date.now() });
+    newEntryInput.value = '';
+    renderNewEntries();
+  }
+
+  function resetNewEntries() {
+    newTaskEntries = [];
+    newEntryInput.value = '';
+    setNewEntryType('subtask');
+    renderNewEntries();
+  }
+
+  newEntrySubtaskBtn.addEventListener('click', () => setNewEntryType('subtask'));
+  newEntryNoteBtn.addEventListener('click', () => setNewEntryType('note'));
+  newEntryInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      addNewEntry();
+    }
+  });
+  renderNewEntries();
+
   function addItem() {
     const value = input.value.trim();
     if (!value) return;
+    // anything still typed in the box counts too, as it does with Save in an open task
+    addNewEntry();
     const priority = prioritySelect.value || 'medium';
     const dueDate = dueDateInput.value || '';
     const category = categorySelect.value || '';
@@ -1808,7 +1938,8 @@
     const repeat = dueDate ? (repeatSelect.value || '') : '';
     // a new task added while looking at Today is starred, so it shows up there
     const starred = page === 'today';
-    todos.push({ id: uid(), text: value, done: false, createdAt: Date.now(), priority, dueDate, category, assignedTo, assignees: taskAssignees, assignedBy, repeat, starred });
+    todos.push({ id: uid(), text: value, done: false, createdAt: Date.now(), priority, dueDate, category, assignedTo, assignees: taskAssignees, assignedBy, repeat, starred, subtasks: newTaskEntries });
+    resetNewEntries();
     repeatSelect.value = '';
     input.value = '';
     prioritySelect.value = 'medium';
@@ -2639,6 +2770,7 @@
   });
 
   function closeNewTaskWindow() {
+    resetNewEntries();
     input.value = '';
     prioritySelect.value = 'medium';
     dueDateInput.value = '';
