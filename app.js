@@ -18,6 +18,7 @@
   const tabPending = document.getElementById('tabPending');
   const tabDone = document.getElementById('tabDone');
   const addRow = document.getElementById('addRow');
+  const newSummaryInput = document.getElementById('newSummary');
   const newTaskBtn = document.getElementById('newTaskBtn');
   const newTaskOverlay = document.getElementById('newTaskOverlay');
   const taskEditOverlay = document.getElementById('taskEditOverlay');
@@ -863,7 +864,7 @@
       })
       .filter(t => {
         if (!searchTerm) return true;
-        const hay = [t.text, t.category, (t.assignees || []).join(' '), t.assignedTo, t.assignedBy,
+        const hay = [t.text, t.summary, t.category, (t.assignees || []).join(' '), t.assignedTo, t.assignedBy,
           (t.subtasks || []).map(x => x.text).join(' ')].join(' ').toLowerCase();
         return searchTerm.split(/\s+/).every(w => hay.includes(w));
       })
@@ -1015,6 +1016,14 @@
         row.className = 'row';
         row.appendChild(box);
         row.appendChild(taskText);
+        const summaryText = (item.summary || '').trim();
+        if (summaryText) {
+          const summaryLine = document.createElement('div');
+          summaryLine.className = 'task-summary';
+          summaryLine.textContent = summaryText;
+          summaryLine.title = summaryText;
+          row.appendChild(summaryLine);
+        }
         row.appendChild(categoryCell);
         row.appendChild(assigneeCell);
         row.appendChild(dueCell);
@@ -1066,6 +1075,17 @@
             item.text = editName.value;
             taskTextLabel.textContent = editName.value;
             taskEditTitle.textContent = editName.value;
+            debouncedSave();
+          });
+
+          const editSummary = document.createElement('input');
+          editSummary.type = 'text';
+          editSummary.className = 'edit-summary';
+          editSummary.value = item.summary || '';
+          editSummary.maxLength = 120;
+          editSummary.placeholder = 'One line on what this task is about (optional)';
+          editSummary.addEventListener('input', () => {
+            item.summary = editSummary.value;
             debouncedSave();
           });
 
@@ -1251,6 +1271,7 @@
           nameRow.appendChild(starBtn);
 
           editFields.appendChild(nameRow);
+          editFields.appendChild(field('Summary', editSummary));
           editFields.appendChild(editMetaRow);
           editFields.appendChild(editAssigneeField);
           editFields.appendChild(editAssignedByField);
@@ -1927,6 +1948,7 @@
   function addItem() {
     const value = input.value.trim();
     if (!value) return;
+    const summary = newSummaryInput.value.trim();
     // anything still typed in the box counts too, as it does with Save in an open task
     addNewEntry();
     const priority = prioritySelect.value || 'medium';
@@ -1938,8 +1960,9 @@
     const repeat = dueDate ? (repeatSelect.value || '') : '';
     // a new task added while looking at Today is starred, so it shows up there
     const starred = page === 'today';
-    todos.push({ id: uid(), text: value, done: false, createdAt: Date.now(), priority, dueDate, category, assignedTo, assignees: taskAssignees, assignedBy, repeat, starred, subtasks: newTaskEntries });
+    todos.push({ id: uid(), text: value, summary, done: false, createdAt: Date.now(), priority, dueDate, category, assignedTo, assignees: taskAssignees, assignedBy, repeat, starred, subtasks: newTaskEntries });
     resetNewEntries();
+    newSummaryInput.value = '';
     repeatSelect.value = '';
     input.value = '';
     prioritySelect.value = 'medium';
@@ -2162,6 +2185,7 @@
     const headers = parsed[0].map(h => h.trim().toLowerCase());
     const idx = {
       task: headers.indexOf('task'),
+      summary: headers.indexOf('summary'),
       status: headers.indexOf('status'),
       priority: headers.indexOf('priority'),
       category: headers.indexOf('category'),
@@ -2253,6 +2277,7 @@
       todos.push({
         id: uid(),
         text: text_,
+        summary: idx.summary !== -1 ? (row[idx.summary] || '').trim() : '',
         done,
         pending,
         createdAt,
@@ -2360,9 +2385,10 @@
 
   function exportCompleted() {
     const completedItems = todos.filter(t => t.done);
-    const headers = ['Task', 'Priority', 'Category', 'Assigned To', 'Assigned By', 'Created', 'Due', 'Completed', 'Subtasks'];
+    const headers = ['Task', 'Summary', 'Priority', 'Category', 'Assigned To', 'Assigned By', 'Created', 'Due', 'Completed', 'Subtasks'];
     const rows = completedItems.map(item => [
       item.text,
+      item.summary || '',
       item.priority || 'medium',
       item.category || '',
       getAssigneesText(item),
@@ -2381,9 +2407,10 @@
   }
 
   function exportAllTasks() {
-    const headers = ['Task', 'Status', 'Priority', 'Category', 'Assigned To', 'Assigned By', 'Created', 'Due', 'Completed', 'Subtasks', 'Waiting On', 'Repeat', 'Starred'];
+    const headers = ['Task', 'Summary', 'Status', 'Priority', 'Category', 'Assigned To', 'Assigned By', 'Created', 'Due', 'Completed', 'Subtasks', 'Waiting On', 'Repeat', 'Starred'];
     const rows = todos.map(item => [
       item.text,
+      item.summary || '',
       item.done ? 'Completed' : (item.pending ? 'Pending' : 'Active'),
       item.priority || 'medium',
       item.category || '',
@@ -2469,6 +2496,7 @@
           '<span class="rpt-tag rpt-priority-' + (t.priority || 'medium') + '">' + (t.priority || 'medium') + '</span>' +
         '</div>' +
         '<div class="rpt-task-meta">' +
+          ((t.summary || '').trim() ? '<span><em>' + escapeHtml(t.summary.trim()) + '</em></span>' : '') +
           (t.category ? '<span>Category: ' + escapeHtml(t.category) + '</span>' : '') +
           (getAssigneesText(t) ? '<span>Assigned: ' + escapeHtml(getAssigneesText(t).replace(/;/g, ',')) + '</span>' : '') +
           (t.assignedBy ? '<span>From: ' + escapeHtml(t.assignedBy) + '</span>' : '') +
@@ -2737,6 +2765,9 @@
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') addItem();
   });
+  newSummaryInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') addItem();
+  });
 
   newTaskBtn.addEventListener('click', () => {
     addFormOpen = true;
@@ -2771,6 +2802,7 @@
 
   function closeNewTaskWindow() {
     resetNewEntries();
+    newSummaryInput.value = '';
     input.value = '';
     prioritySelect.value = 'medium';
     dueDateInput.value = '';

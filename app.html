@@ -120,6 +120,8 @@
         <div class="add-row" id="addRow">
           <div class="field"><label class="field-label" for="newItem">Task</label>
             <input type="text" id="newItem" placeholder="What needs doing?" maxlength="280" autocomplete="off"></div>
+          <div class="field"><label class="field-label" for="newSummary">Summary</label>
+            <input type="text" id="newSummary" placeholder="One line on what this task is about (optional)" maxlength="120" autocomplete="off"></div>
           <div class="edit-meta-row">
             <div class="field"><label class="field-label" for="dueDateInput">Due date</label>
               <input type="date" id="dueDateInput"></div>
@@ -247,7 +249,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.27</span></h2>
+      <h2>Settings <span class="settings-version">v12.28</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -518,6 +520,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.28</span> Tasks can have a one-line summary: add it below the task name when creating or editing a task, and it shows in italics under the name in your lists. Search, CSV backups and the Summary Report include it.</li>
           <li><span class="changelog-version">v12.27</span> The New Task window now has Subtasks / Notes, the same as an open task, so you can add them while creating the task.</li>
           <li><span class="changelog-version">v12.26</span> When sorted by Priority, overdue tasks (oldest first) and then tasks due today now move to the top of the High, Medium and Low groups.</li>
           <li><span class="changelog-version">v12.25</span> Five colourful new layouts in Settings &rarr; Appearance &rarr; Layout: Pop (bold comic-book blocks), Aurora (glowing night sky), Pinboard (tasks as sticky notes on cork), Arcade (neon pixel style) and Tropical (sunset gradient with colourful tabs). Also fixed the lock button overlapping the title in the Paper and Linen &amp; Clay layouts.</li>
