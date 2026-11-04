@@ -810,7 +810,19 @@
 
     const priorityOrder = { high: 0, medium: 1, low: 2 };
     const sortComparators = {
-      priority: (a, b) => priorityOrder[a.priority || 'medium'] - priorityOrder[b.priority || 'medium'],
+      // within each priority: overdue (oldest first), then due today, then everything else as it was
+      priority: (a, b) => {
+        const urgency = t => {
+          if (t.done || !t.dueDate) return 2;
+          if (t.dueDate === todayStr) return 1;
+          return isPastDue(t.dueDate) ? 0 : 2;
+        };
+        const byPriority = priorityOrder[a.priority || 'medium'] - priorityOrder[b.priority || 'medium'];
+        if (byPriority) return byPriority;
+        const byUrgency = urgency(a) - urgency(b);
+        if (byUrgency) return byUrgency;
+        return urgency(a) === 0 ? a.dueDate.localeCompare(b.dueDate) : 0;
+      },
       due: (a, b) => {
         if (!a.dueDate && !b.dueDate) return 0;
         if (!a.dueDate) return 1;
