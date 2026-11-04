@@ -30,7 +30,7 @@
   }
   var themes = ['auto', 'warm', 'warmdark', 'light', 'dark', 'bw', 'terminal'];
   var l = saved('layout', 'work_layout');
-  var layout = ['paper', 'sage', 'linen'].indexOf(l) >= 0;
+  var layout = ['paper', 'sage', 'linen', 'pop', 'aurora', 'pinboard', 'arcade', 'tropical'].indexOf(l) >= 0;
   // the new layouts keep their own theme choice ('layout' = the layout's own colours)
   var t = layout ? saved('layouttheme', 'work_layoutTheme') : saved('theme', 'work_theme');
   if (t !== 'layout' && themes.indexOf(t) < 0) t = layout ? 'layout' : 'auto';
@@ -236,7 +236,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.24</span></h2>
+      <h2>Settings <span class="settings-version">v12.25</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -247,7 +247,7 @@
         <span class="accordion-arrow">&#9656;</span>
       </button>
       <div class="accordion-content" id="layoutContent">
-        <p class="settings-hint">Pick how the page is laid out. Paper, Sage and Linen &amp; Clay come with their own colours, or you can pick any theme for them below.</p>
+        <p class="settings-hint">Pick how the page is laid out. Every layout except Original comes with its own colours, or you can pick any theme for it below.</p>
         <div class="theme-options" id="layoutOptions">
           <button class="theme-option layout-option" type="button" data-layout="original">
             <span class="theme-swatch layout-swatch-original"></span>
@@ -264,6 +264,26 @@
           <button class="theme-option layout-option" type="button" data-layout="linen">
             <span class="theme-swatch layout-swatch-linen"></span>
             <span>Linen &amp; Clay</span>
+          </button>
+          <button class="theme-option layout-option" type="button" data-layout="pop">
+            <span class="theme-swatch layout-swatch-pop"></span>
+            <span>Pop</span>
+          </button>
+          <button class="theme-option layout-option" type="button" data-layout="aurora">
+            <span class="theme-swatch layout-swatch-aurora"></span>
+            <span>Aurora</span>
+          </button>
+          <button class="theme-option layout-option" type="button" data-layout="pinboard">
+            <span class="theme-swatch layout-swatch-pinboard"></span>
+            <span>Pinboard</span>
+          </button>
+          <button class="theme-option layout-option" type="button" data-layout="arcade">
+            <span class="theme-swatch layout-swatch-arcade"></span>
+            <span>Arcade</span>
+          </button>
+          <button class="theme-option layout-option" type="button" data-layout="tropical">
+            <span class="theme-swatch layout-swatch-tropical"></span>
+            <span>Tropical</span>
           </button>
         </div>
       </div>
@@ -487,6 +507,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.25</span> Five colourful new layouts in Settings &rarr; Appearance &rarr; Layout: Pop (bold comic-book blocks), Aurora (glowing night sky), Pinboard (tasks as sticky notes on cork), Arcade (neon pixel style) and Tropical (sunset gradient with colourful tabs). Also fixed the lock button overlapping the title in the Paper and Linen &amp; Clay layouts.</li>
           <li><span class="changelog-version">v12.24</span> More space between the date and the tick box on each subtask/note in the task window.</li>
           <li><span class="changelog-version">v12.23</span> Click anywhere on a task's row to open it (or to select it in Select mode), not just on its name; the tick box still marks it done. Dragging tasks to reorder them has been removed.</li>
           <li><span class="changelog-version">v12.22</span> Fixed passphrase and PIN boxes sometimes showing what you type instead of dots after the last update. The dots no longer depend on the stylesheet, a box that can't show dots becomes a normal hidden password box, and updates now always fetch every file fresh so the page and its stylesheet can't get out of step.</li>

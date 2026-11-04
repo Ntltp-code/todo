@@ -280,8 +280,19 @@
   const VALID_THEMES = ['auto', 'warm', 'warmdark', 'light', 'dark', 'bw', 'terminal'];
 
   let themeSetting = 'auto';
-  const VALID_LAYOUTS = ['original', 'paper', 'sage', 'linen'];
-  const LAYOUT_BAR_COLOURS = { paper: '#2563EB', sage: '#2E6A4F', linen: '#A84A28' };
+  const VALID_LAYOUTS = ['original', 'paper', 'sage', 'linen', 'pop', 'aurora', 'pinboard', 'arcade', 'tropical'];
+  const LAYOUT_BAR_COLOURS = { paper: '#2563EB', sage: '#2E6A4F', linen: '#A84A28', pop: '#FFD60A', aurora: '#0E0828', pinboard: '#D9B382', arcade: '#0B0420', tropical: '#FF7E5F' };
+  // only the chosen layout's fonts are downloaded
+  const LAYOUT_FONTS = {
+    paper: 'family=Inter:wght@400;500;600;700',
+    sage: 'family=Plus+Jakarta+Sans:wght@400;500;600;700;800',
+    linen: 'family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600',
+    pop: 'family=Space+Grotesk:wght@400;500;600;700&family=Archivo+Black',
+    aurora: 'family=Outfit:wght@400;500;600;700',
+    pinboard: 'family=Patrick+Hand&family=Caveat:wght@700',
+    arcade: 'family=Space+Mono:wght@400;700&family=Silkscreen:wght@400;700',
+    tropical: 'family=Fredoka:wght@400;500;600;700'
+  };
   let layoutSetting = 'original';
   // the new layouts keep their own theme choice, so Original keeps its theme too;
   // 'layout' means the layout's own colours
@@ -351,13 +362,14 @@
     VALID_LAYOUTS.forEach(l => document.body.classList.remove('layout-' + l));
     if (layout !== 'original') {
       document.body.classList.add('layout-' + layout);
-      if (!document.getElementById('layoutFonts')) {
-        const link = document.createElement('link');
+      let link = document.getElementById('layoutFonts');
+      if (!link) {
+        link = document.createElement('link');
         link.id = 'layoutFonts';
         link.rel = 'stylesheet';
-        link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap';
         document.head.appendChild(link);
       }
+      link.href = 'https://fonts.googleapis.com/css2?' + LAYOUT_FONTS[layout] + '&display=swap';
     }
     document.querySelectorAll('.layout-option').forEach(btn => {
       btn.classList.toggle('selected', btn.dataset.layout === layout);
@@ -896,7 +908,7 @@
         const li = document.createElement('li');
         const isDueToday = !item.done && item.dueDate === todayDateString();
         const isRowOverdue = !item.done && isPastDue(item.dueDate);
-        li.className = 'item' + (item.done ? ' done' : '') + (isDueToday ? ' due-today' : '') + (isRowOverdue ? ' overdue-row' : '') +
+        li.className = 'item prio-' + (item.priority || 'medium') + (item.done ? ' done' : '') + (isDueToday ? ' due-today' : '') + (isRowOverdue ? ' overdue-row' : '') +
           (selectMode && selectedIds.has(item.id) ? ' selected' : '');
         li.dataset.id = item.id;
         li.dataset.group = group ? String(group.key) : '';
