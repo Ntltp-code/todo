@@ -19,6 +19,7 @@
   const tabDone = document.getElementById('tabDone');
   const addRow = document.getElementById('addRow');
   const newSummaryInput = document.getElementById('newSummary');
+  const newRemindInput = document.getElementById('newRemindAt');
   const newTaskBtn = document.getElementById('newTaskBtn');
   const newTaskOverlay = document.getElementById('newTaskOverlay');
   const taskEditOverlay = document.getElementById('taskEditOverlay');
@@ -514,6 +515,7 @@
     copy.completedAt = null;
     copy.createdAt = Date.now();
     copy.dueDate = next;
+    copy.remindAt = null;
     copy.subtasks = (item.subtasks || []).filter(x => x.type !== 'note').map(x => Object.assign({}, x, { id: uid(), done: false }));
     todos.push(copy);
     return next;
@@ -719,6 +721,7 @@
     if (!passwordHash || encryptionOn()) {
       maybeShowDueSummary();
     }
+    startReminders();
   }
 
   async function saveCategories() {
@@ -943,6 +946,13 @@
           star.title = 'Starred for Today';
           taskText.appendChild(star);
         }
+        if (item.remindAt && !item.done) {
+          const bell = document.createElement('span');
+          bell.className = 'reminder-mark';
+          bell.textContent = '🔔 ';
+          bell.title = 'Reminder: ' + formatReminder(item.remindAt);
+          taskText.appendChild(bell);
+        }
         const taskTextLabel = document.createElement('span');
         taskTextLabel.textContent = item.text;
         taskText.appendChild(taskTextLabel);
@@ -1087,6 +1097,25 @@
           editSummary.addEventListener('input', () => {
             item.summary = editSummary.value;
             debouncedSave();
+          });
+
+          const editRemind = document.createElement('input');
+          editRemind.type = 'datetime-local';
+          editRemind.className = 'edit-due edit-remind';
+          editRemind.value = item.remindAt || '';
+          const calendarBtn = document.createElement('button');
+          calendarBtn.type = 'button';
+          calendarBtn.className = 'star-toggle reminder-calendar-btn';
+          calendarBtn.textContent = 'Add to calendar';
+          calendarBtn.title = 'Save a calendar file for this reminder. Your calendar can alert you even when this app is closed.';
+          calendarBtn.disabled = !item.remindAt;
+          calendarBtn.addEventListener('click', () => downloadCalendarFile(item));
+          // no re-render here: the box changes while a time is still being typed into it
+          editRemind.addEventListener('change', () => {
+            item.remindAt = editRemind.value || null;
+            calendarBtn.disabled = !item.remindAt;
+            if (item.remindAt) askNotificationPermission();
+            save();
           });
 
           const editMetaRow = document.createElement('div');
@@ -1273,6 +1302,11 @@
           editFields.appendChild(nameRow);
           editFields.appendChild(field('Summary', editSummary));
           editFields.appendChild(editMetaRow);
+          const remindRow = document.createElement('div');
+          remindRow.className = 'edit-name-row';
+          remindRow.appendChild(field('Remind me', editRemind));
+          remindRow.appendChild(calendarBtn);
+          editFields.appendChild(remindRow);
           editFields.appendChild(editAssigneeField);
           editFields.appendChild(editAssignedByField);
 
@@ -1817,6 +1851,183 @@
     setPage('today');
   });
 
+  // ---------- reminders ----------
+  // item.remindAt is a local 'YYYY-MM-DDTHH:MM' time; dismissing a reminder clears it, so that syncs to other devices.
+  // There is no server, so these only fire while the app is open; missed ones appear the next time it opens.
+  const reminderOverlay = document.getElementById('reminderOverlay');
+  const reminderBody = document.getElementById('reminderBody');
+  const hiddenReminders = new Set();    // closed with the X: left alone until the app is next opened
+  const notifiedReminders = new Set();  // desktop notification already sent
+  let remindersStarted = false;
+  let shownReminderKey = '';
+
+  function reminderKey(t) { return t.id + '|' + t.remindAt; }
+
+  function formatReminder(remindAt) {
+    const d = new Date(remindAt);
+    if (isNaN(d.getTime())) return remindAt;
+    return d.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function toReminderValue(d) {
+    const p = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  function askNotificationPermission() {
+    if (!('Notification' in window) || Notification.permission !== 'default') return;
+    try { Notification.requestPermission(); } catch (e) { /* the pop-up in the app still works */ }
+  }
+
+  function sendReminderNotification(t) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const title = 'Reminder: ' + t.text;
+    const options = { body: (t.summary || '').trim() || formatReminder(t.remindAt), tag: t.id, icon: 'icon.svg', data: { url: location.href } };
+    const fallback = () => { try { new Notification(title, options); } catch (e) { /* the pop-up in the app still works */ } };
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then(reg => reg.showNotification(title, options)).catch(fallback);
+    } else {
+      fallback();
+    }
+  }
+
+  function renderReminderPopup(due) {
+    reminderBody.innerHTML = '';
+    due.forEach(t => {
+      const row = document.createElement('div');
+      row.className = 'reminder-row';
+      const name = document.createElement('div');
+      name.className = 'reminder-name';
+      name.textContent = t.text;
+      const when = document.createElement('div');
+      when.className = 'reminder-when';
+      when.textContent = formatReminder(t.remindAt);
+      const actions = document.createElement('div');
+      actions.className = 'reminder-actions';
+      const later = (ms, d) => {
+        t.remindAt = toReminderValue(d || new Date(Date.now() + ms));
+        save();
+        render();
+        checkReminders();
+      };
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(9, 0, 0, 0);
+      [
+        ['Open', () => {
+          t.remindAt = null;
+          save();
+          closeReminderPopup();
+          filterMode = null;
+          setPage(t.done ? 'done' : t.pending ? 'pending' : 'active');
+          toggleExpanded(t.id);
+        }],
+        ['In 1 hour', () => later(3600000)],
+        ['Tomorrow 9am', () => later(0, tomorrow)],
+        ['Dismiss', () => {
+          t.remindAt = null;
+          save();
+          render();
+          checkReminders();
+        }]
+      ].forEach(([label, onClick]) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = label;
+        b.addEventListener('click', onClick);
+        actions.appendChild(b);
+      });
+      row.appendChild(name);
+      row.appendChild(when);
+      row.appendChild(actions);
+      reminderBody.appendChild(row);
+    });
+  }
+
+  function closeReminderPopup() {
+    shownReminderKey = '';
+    reminderOverlay.classList.remove('open');
+  }
+
+  function checkReminders() {
+    if (!remindersStarted || lockOverlay.classList.contains('open')) return;
+    const now = toReminderValue(new Date());
+    const due = todos.filter(t => !t.done && t.remindAt && t.remindAt <= now);
+
+    // anything else open (a task being edited, Settings...) keeps the pop-up waiting, so typing isn't interrupted
+    const otherOpen = !!document.querySelector('.modal-overlay.open:not(#reminderOverlay), .new-task-overlay.open');
+    due.forEach(t => {
+      const key = reminderKey(t);
+      if (notifiedReminders.has(key)) return;
+      notifiedReminders.add(key);
+      if (document.hidden || !document.hasFocus() || otherOpen) sendReminderNotification(t);
+    });
+
+    const showing = due.filter(t => !hiddenReminders.has(reminderKey(t)));
+    if (!showing.length) { closeReminderPopup(); return; }
+    if (otherOpen) return;
+    const key = showing.map(reminderKey).join(',');
+    if (key !== shownReminderKey) {
+      shownReminderKey = key;
+      renderReminderPopup(showing);
+    }
+    reminderOverlay.classList.add('open');
+  }
+
+  function hideReminderPopup() {
+    const now = toReminderValue(new Date());
+    todos.forEach(t => { if (t.remindAt && t.remindAt <= now) hiddenReminders.add(reminderKey(t)); });
+    closeReminderPopup();
+  }
+
+  function startReminders() {
+    if (remindersStarted) return;
+    remindersStarted = true;
+    setInterval(checkReminders, 15000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkReminders(); });
+    checkReminders();
+  }
+
+  document.getElementById('closeReminderBtn').addEventListener('click', hideReminderPopup);
+  reminderOverlay.addEventListener('click', e => {
+    if (e.target === reminderOverlay) hideReminderPopup();
+  });
+
+  // a calendar file with its own alert: the calendar can remind you even when this app is closed
+  function downloadCalendarFile(t) {
+    if (!t.remindAt) return;
+    const start = new Date(t.remindAt);
+    if (isNaN(start.getTime())) return;
+    const p = n => String(n).padStart(2, '0');
+    const stamp = d => d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + 'T' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+    const utcNow = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+    const esc = s => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+    const fold = line => {
+      const parts = [];
+      for (let i = 0; i < line.length; i += 70) parts.push((i ? ' ' : '') + line.slice(i, i + 70));
+      return parts.join('\r\n');
+    };
+    const lines = [
+      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//To-do//Reminders//EN', 'BEGIN:VEVENT',
+      'UID:' + t.id + '-' + stamp(start) + '@todo',
+      'DTSTAMP:' + utcNow,
+      'DTSTART:' + stamp(start),
+      'DTEND:' + stamp(new Date(start.getTime() + 1800000)),
+      'SUMMARY:' + esc(t.text)
+    ];
+    if ((t.summary || '').trim()) lines.push('DESCRIPTION:' + esc(t.summary.trim()));
+    lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + esc(t.text), 'TRIGGER:-PT0M', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR');
+    const blob = new Blob([lines.map(fold).join('\r\n') + '\r\n'], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'reminder-' + (t.text.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'task') + '.ics';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   // ---------- subtasks and notes typed into the New Task window, held here until the task is added ----------
   const newEntryList = document.getElementById('newEntryList');
   const newEntryInput = document.getElementById('newEntryInput');
@@ -1949,6 +2160,7 @@
     const value = input.value.trim();
     if (!value) return;
     const summary = newSummaryInput.value.trim();
+    const remindAt = newRemindInput.value || null;
     // anything still typed in the box counts too, as it does with Save in an open task
     addNewEntry();
     const priority = prioritySelect.value || 'medium';
@@ -1960,9 +2172,10 @@
     const repeat = dueDate ? (repeatSelect.value || '') : '';
     // a new task added while looking at Today is starred, so it shows up there
     const starred = page === 'today';
-    todos.push({ id: uid(), text: value, summary, done: false, createdAt: Date.now(), priority, dueDate, category, assignedTo, assignees: taskAssignees, assignedBy, repeat, starred, subtasks: newTaskEntries });
+    todos.push({ id: uid(), text: value, summary, remindAt, done: false, createdAt: Date.now(), priority, dueDate, category, assignedTo, assignees: taskAssignees, assignedBy, repeat, starred, subtasks: newTaskEntries });
     resetNewEntries();
     newSummaryInput.value = '';
+    newRemindInput.value = '';
     repeatSelect.value = '';
     input.value = '';
     prioritySelect.value = 'medium';
@@ -2186,6 +2399,7 @@
     const idx = {
       task: headers.indexOf('task'),
       summary: headers.indexOf('summary'),
+      remindAt: headers.indexOf('remind at'),
       status: headers.indexOf('status'),
       priority: headers.indexOf('priority'),
       category: headers.indexOf('category'),
@@ -2278,6 +2492,7 @@
         id: uid(),
         text: text_,
         summary: idx.summary !== -1 ? (row[idx.summary] || '').trim() : '',
+        remindAt: idx.remindAt !== -1 && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test((row[idx.remindAt] || '').trim()) ? row[idx.remindAt].trim() : null,
         done,
         pending,
         createdAt,
@@ -2407,7 +2622,7 @@
   }
 
   function exportAllTasks() {
-    const headers = ['Task', 'Summary', 'Status', 'Priority', 'Category', 'Assigned To', 'Assigned By', 'Created', 'Due', 'Completed', 'Subtasks', 'Waiting On', 'Repeat', 'Starred'];
+    const headers = ['Task', 'Summary', 'Status', 'Priority', 'Category', 'Assigned To', 'Assigned By', 'Created', 'Due', 'Completed', 'Subtasks', 'Waiting On', 'Repeat', 'Starred', 'Remind At'];
     const rows = todos.map(item => [
       item.text,
       item.summary || '',
@@ -2422,7 +2637,8 @@
       summarizeSubtasks(item),
       item.waitingOn || '',
       item.repeat || '',
-      item.starred ? 'yes' : ''
+      item.starred ? 'yes' : '',
+      item.remindAt || ''
     ]);
 
     downloadCsv(headers, rows, 'all-tasks-' + todayDateString() + '.csv');
@@ -2710,6 +2926,7 @@
   const overlayClosers = [
     ['newTaskOverlay', 'newTaskWindowClose'],
     ['settingsOverlay', 'closeSettingsBtn'],
+    ['reminderOverlay', 'closeReminderBtn'],
     ['dueSummaryOverlay', 'closeDueSummaryBtn'],
     ['reportOverlay', 'reportClose'],
     ['taskEditOverlay', 'taskEditClose']
@@ -2738,7 +2955,7 @@
   // a click anywhere in a date box opens the calendar, not just a click on its small icon
   document.addEventListener('click', e => {
     const el = e.target;
-    if (!(el instanceof HTMLInputElement) || el.type !== 'date' || el.disabled || typeof el.showPicker !== 'function') return;
+    if (!(el instanceof HTMLInputElement) || (el.type !== 'date' && el.type !== 'datetime-local') || el.disabled || typeof el.showPicker !== 'function') return;
     try { el.showPicker(); } catch (err) { /* already open, or not allowed here: the browser's own behaviour applies */ }
   });
 
@@ -2755,6 +2972,8 @@
     new MutationObserver(() => {
       const isOpen = ov.classList.contains('open');
       if (wasOpen && !isOpen && lastOutsideFocus && document.contains(lastOutsideFocus)) lastOutsideFocus.focus();
+      // a reminder held back while this pop-up was open can show now
+      if (wasOpen && !isOpen && ov !== reminderOverlay) checkReminders();
       wasOpen = isOpen;
       syncScrollLock();
     }).observe(ov, { attributes: true, attributeFilter: ['class'] });
@@ -2767,6 +2986,9 @@
   });
   newSummaryInput.addEventListener('keydown', e => {
     if (e.key === 'Enter') addItem();
+  });
+  newRemindInput.addEventListener('change', () => {
+    if (newRemindInput.value) askNotificationPermission();
   });
 
   newTaskBtn.addEventListener('click', () => {
@@ -2803,6 +3025,7 @@
   function closeNewTaskWindow() {
     resetNewEntries();
     newSummaryInput.value = '';
+    newRemindInput.value = '';
     input.value = '';
     prioritySelect.value = 'medium';
     dueDateInput.value = '';
