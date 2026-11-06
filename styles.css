@@ -2854,6 +2854,27 @@ body.layout-sage li.item:hover:not(.selected) { background:color-mix(in srgb, va
 /* the date was squeezed into 34px, so longer dates ran into the tick box */
 .subtask-date { width:auto; min-width:46px; margin-right:6px; }
 
+/* ===== v12.36: resizable task window ===== */
+.task-edit-window { position:relative; }
+.task-edit-window.sized { max-width:calc(100vw - 32px); }
+.task-edit-window.sized .task-edit-body { flex:1 1 auto; min-height:0; }
+.tw-resize { position:absolute; z-index:4; touch-action:none; }
+.tw-resize-right { top:56px; right:0; bottom:22px; width:9px; cursor:ew-resize; }
+.tw-resize-bottom { left:22px; right:22px; bottom:0; height:9px; cursor:ns-resize; }
+.tw-resize-corner { right:0; bottom:0; width:22px; height:22px; cursor:nwse-resize; opacity:.55;
+  background:linear-gradient(135deg, transparent 0 55%, var(--ink-muted) 55% 61%, transparent 61% 70%, var(--ink-muted) 70% 76%, transparent 76%); }
+.tw-resize-corner:hover, .tw-resize-corner:focus-visible { opacity:1; outline:none; }
+.tw-resize-right:hover, .tw-resize-bottom:hover { background:color-mix(in srgb, var(--accent-blue) 25%, transparent); }
+html.tw-resizing, html.tw-resizing * { user-select:none !important; }
+html.tw-resizing-x, html.tw-resizing-x * { cursor:ew-resize !important; }
+html.tw-resizing-y, html.tw-resizing-y * { cursor:ns-resize !important; }
+html.tw-resizing-xy, html.tw-resizing-xy * { cursor:nwse-resize !important; }
+/* phones: the window fills the screen, so there is nothing to resize */
+@media (max-width: 640px) {
+  .tw-resize { display:none; }
+  .task-edit-window.sized { width:100% !important; height:100% !important; max-width:100%; }
+}
+
 /* ===== v12.34: email a task ===== */
 .email-menu-wrap { position:relative; flex:none; }
 .email-menu { display:none; position:absolute; right:0; top:calc(100% + 4px); z-index:20; min-width:190px; padding:4px; border:1px solid var(--rule); border-radius:10px; background:var(--paper); box-shadow:0 10px 30px -8px rgba(0,0,0,.45); }

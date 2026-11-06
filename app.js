@@ -408,6 +408,80 @@
   document.getElementById('taskTextSmaller').addEventListener('click', () => stepTaskTextSize(-1));
   document.getElementById('taskTextLarger').addEventListener('click', () => stepTaskTextSize(1));
 
+  // ---------- task window size (drag its right edge, bottom edge or corner) ----------
+  // Remembered on this device only, as screens differ. The window stays centred, so each edge moves
+  // twice as far as the pointer: that keeps the edge under the pointer while you drag.
+  const taskWindow = document.querySelector('.task-edit-window');
+  const TW_KEY = 'todo_taskwin_' + (new URLSearchParams(location.search).get('u') || '').toLowerCase();
+  const TW_MIN_W = 520, TW_MIN_H = 360;
+  let taskWindowSize = null;
+  try { taskWindowSize = JSON.parse(localStorage.getItem(TW_KEY) || 'null'); } catch (e) { /* default size */ }
+
+  function applyTaskWindowSize() {
+    const s = taskWindowSize;
+    taskWindow.classList.toggle('sized', !!s);
+    taskWindow.style.width = s && s.w ? s.w + 'px' : '';
+    taskWindow.style.height = s && s.h ? s.h + 'px' : '';
+  }
+
+  function setTaskWindowSize(w, h, keep) {
+    const maxW = window.innerWidth - 32, maxH = window.innerHeight - 32;
+    const s = Object.assign({}, taskWindowSize || {});
+    if (w != null) s.w = Math.round(Math.max(TW_MIN_W, Math.min(maxW, w)));
+    if (h != null) s.h = Math.round(Math.max(TW_MIN_H, Math.min(maxH, h)));
+    taskWindowSize = s;
+    applyTaskWindowSize();
+    if (keep) { try { localStorage.setItem(TW_KEY, JSON.stringify(s)); } catch (e) { /* this session only */ } }
+  }
+
+  function resetTaskWindowSize() {
+    taskWindowSize = null;
+    applyTaskWindowSize();
+    try { localStorage.removeItem(TW_KEY); } catch (e) { /* ignore */ }
+  }
+
+  taskWindow.querySelectorAll('.tw-resize').forEach(handle => {
+    handle.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const axis = handle.dataset.resize;
+      const box = taskWindow.getBoundingClientRect();
+      const startX = e.clientX, startY = e.clientY;
+      handle.setPointerCapture(e.pointerId);
+      document.documentElement.classList.add('tw-resizing', 'tw-resizing-' + axis);
+      const move = ev => setTaskWindowSize(
+        axis.includes('x') ? box.width + 2 * (ev.clientX - startX) : null,
+        axis.includes('y') ? box.height + 2 * (ev.clientY - startY) : null,
+        false);
+      const end = () => {
+        handle.removeEventListener('pointermove', move);
+        handle.removeEventListener('pointerup', end);
+        handle.removeEventListener('pointercancel', end);
+        document.documentElement.classList.remove('tw-resizing', 'tw-resizing-' + axis);
+        if (taskWindowSize) setTaskWindowSize(taskWindowSize.w, taskWindowSize.h, true);
+      };
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup', end);
+      handle.addEventListener('pointercancel', end);
+    });
+    handle.addEventListener('dblclick', resetTaskWindowSize);
+  });
+
+  // the corner can be used from the keyboard too
+  taskWindow.querySelector('.tw-resize-corner').addEventListener('keydown', e => {
+    const box = taskWindow.getBoundingClientRect();
+    const step = e.shiftKey ? 120 : 40;
+    const moves = { ArrowRight: [step, 0], ArrowLeft: [-step, 0], ArrowDown: [0, step], ArrowUp: [0, -step] };
+    if (moves[e.key]) {
+      e.preventDefault();
+      setTaskWindowSize(box.width + moves[e.key][0], box.height + moves[e.key][1], true);
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      resetTaskWindowSize();
+    }
+  });
+  applyTaskWindowSize();
+
   // Linen & Clay's summary cards just press the matching filter or tab
   document.querySelectorAll('.layout-card').forEach(card => {
     card.addEventListener('click', () => {
@@ -3218,6 +3292,17 @@
   document.addEventListener('focusin', e => {
     if (!e.target.closest || !e.target.closest('.modal-overlay, .new-task-overlay')) lastOutsideFocus = e.target;
   });
+  // A click on a pop-up's dimmed backdrop closes it, but only when the press also started on the backdrop:
+  // pressing inside (selecting text, dragging the resize corner) and letting go outside must not close it.
+  let pressStartedOn = null;
+  document.addEventListener('pointerdown', e => { pressStartedOn = e.target; }, true);
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t && t.classList && (t.classList.contains('modal-overlay') || t.classList.contains('new-task-overlay')) && pressStartedOn !== t) {
+      e.stopPropagation();
+    }
+  }, true);
+
   // while any pop-up is open the page behind it is locked, so scrolling moves the pop-up, not the page
   function syncScrollLock() {
     document.documentElement.classList.toggle('overlay-open', !!document.querySelector('.modal-overlay.open, .new-task-overlay.open'));
