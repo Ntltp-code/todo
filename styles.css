@@ -2854,6 +2854,15 @@ body.layout-sage li.item:hover:not(.selected) { background:color-mix(in srgb, va
 /* the date was squeezed into 34px, so longer dates ran into the tick box */
 .subtask-date { width:auto; min-width:46px; margin-right:6px; }
 
+/* ===== v12.31: daily briefing ===== */
+.briefing-opener { margin:4px 0 20px; font-size:17px; font-weight:600; line-height:1.4; color:var(--ink); }
+.briefing-summary { display:block; margin-top:2px; font-size:13px; font-style:italic; color:var(--ink-muted); }
+.due-summary-section.briefing-focus .due-summary-title { color:var(--accent-blue); }
+.due-summary-section.briefing-focus .due-summary-list li { font-weight:700; }
+.due-summary-section.briefing-done .due-summary-task { color:var(--ink-muted); text-decoration:line-through; }
+.due-summary-section.briefing-done .due-summary-date { color:var(--check); font-weight:700; }
+#briefingBtn[hidden] { display:none; }
+
 /* ===== v12.30: reminders ===== */
 .reminder-mark { font-size:.85em; }
 .modal.reminder-modal { max-width:560px; }

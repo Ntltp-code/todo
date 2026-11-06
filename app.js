@@ -1791,8 +1791,101 @@
 
   // the Today list as a pop-up every time the app opens (the app itself opens on To-do).
   // On Mondays, once, it also lists tasks nobody has touched for a while and nudges for a backup.
+  // ---------- daily briefing (only for the users listed in config.js briefingUsers, for now) ----------
+  // The first opening of each day shows the briefing in the Today pop-up's place; later openings show the usual Today pop-up.
+  // It is built here in the browser from the list already open, so it works with encryption on and nothing leaves the device.
+  const briefingUser = (new URLSearchParams(location.search).get('u') || '').toLowerCase();
+  const briefingOn = ((window.TODO_CONFIG && TODO_CONFIG.briefingUsers) || []).includes(briefingUser);
+  const briefingBtn = document.getElementById('briefingBtn');
+  if (briefingOn) briefingBtn.hidden = false;
+  briefingBtn.addEventListener('click', () => showBriefing());
+
+  function briefingSection(title, items, extraClass, rightText, note) {
+    if (!items.length) return '';
+    const rows = items.map(t => {
+      const summary = (t.summary || '').trim();
+      return '<li data-id="' + escapeHtml(t.id) + '" tabindex="0" title="Open this task"><span class="due-summary-task">' + escapeHtml(t.text) +
+        (summary ? '<span class="briefing-summary">' + escapeHtml(summary) + '</span>' : '') + '</span>' +
+        '<span class="due-summary-date">' + escapeHtml(rightText(t)) + '</span></li>';
+    }).join('');
+    return '<div class="due-summary-section' + (extraClass ? ' ' + extraClass : '') + '">' +
+      '<div class="due-summary-title">' + title + ' (' + items.length + ')</div>' +
+      (note ? '<p class="settings-hint">' + note + '</p>' : '') +
+      '<ul class="due-summary-list">' + rows + '</ul></div>';
+  }
+
+  function showBriefing() {
+    const todayStr = todayDateString();
+    const yesterday = toISODate(Date.now() - 86400000);
+    const { overdue, dueToday, dueThisWeek } = getDueSummaryData();
+    const starred = todos.filter(t => !t.done && t.starred && !overdue.includes(t) && !dueToday.includes(t));
+    const remindersToday = todos.filter(t => !t.done && t.remindAt && t.remindAt.slice(0, 10) === todayStr)
+      .sort((a, b) => a.remindAt.localeCompare(b.remindAt));
+    const doneYesterday = todos.filter(t => t.done && t.completedAt && toISODate(t.completedAt) === yesterday);
+    const stale = todos.filter(isStale);
+
+    // where to start: overdue high priority, then other overdue, then due today, then starred; ties by priority, then oldest due
+    const rank = t => (overdue.includes(t) ? (t.priority === 'high' ? 0 : 1) : dueToday.includes(t) ? 2 : 3);
+    const focus = overdue.concat(dueToday, starred).slice().sort((a, b) =>
+      rank(a) - rank(b) ||
+      priorityOrder[a.priority || 'medium'] - priorityOrder[b.priority || 'medium'] ||
+      (a.dueDate || '9999').localeCompare(b.dueDate || '9999')
+    ).slice(0, 3);
+
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    const me = ((window.TODO_CONFIG && TODO_CONFIG.users) || []).find(u => u.id === briefingUser);
+    const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
+    const parts = [];
+    if (overdue.length) parts.push(overdue.length + ' overdue');
+    if (dueToday.length) parts.push(dueToday.length + ' due today');
+    if (remindersToday.length) parts.push(plural(remindersToday.length, 'reminder') + ' today');
+    const opener = parts.length ? parts.join(', ') + '.' : 'Nothing overdue and nothing due today. A clear run.';
+
+    const isMonday = new Date().getDay() === 1;
+    const backupDays = lastExportAt ? Math.floor((Date.now() - lastExportAt) / 86400000) : null;
+    const backupSection = isMonday && (backupDays === null || backupDays > 30)
+      ? '<div class="due-summary-section backup-nudge"><div class="due-summary-title">Backup</div>' +
+        '<p class="settings-hint">' + (backupDays === null ? 'You haven\'t saved a CSV backup yet.' : 'Your last CSV backup was ' + backupDays + ' days ago.') +
+        (encryptionOn() ? ' Your list is encrypted, so a backup is the only way back if the passphrase is forgotten.' : '') +
+        ' <button type="button" class="link-btn" id="summaryExportBtn">Export now</button></p></div>'
+      : '';
+    const staleShown = stale.slice(0, 10);
+
+    const body = document.getElementById('dueSummaryBody');
+    body.innerHTML =
+      '<p class="briefing-opener">' + escapeHtml(opener) + '</p>' +
+      briefingSection('Start with', focus, 'briefing-focus', t => t.dueDate ? formatDue(t.dueDate) : (t.starred ? '★ Starred' : '')) +
+      briefingSection('Overdue', overdue, 'overdue', t => formatDue(t.dueDate)) +
+      briefingSection('Due today', dueToday, 'due', () => 'Today') +
+      briefingSection('Reminders today', remindersToday, '', t => t.remindAt.slice(11, 16)) +
+      briefingSection('★ Starred', starred, '', t => t.dueDate ? formatDue(t.dueDate) : '') +
+      briefingSection('Coming up this week', dueThisWeek, '', t => formatDue(t.dueDate)) +
+      briefingSection('Finished yesterday', doneYesterday, 'briefing-done', () => '✓') +
+      briefingSection('Not touched in ' + STALE_DAYS + '+ days', staleShown, '', t => formatDate(t.updatedAt || t.createdAt),
+        'Worth a quick look: finish, sleep or update these.' + (stale.length > staleShown.length ? ' Showing 10 of ' + stale.length + '.' : '')) +
+      backupSection;
+    const exportNow = document.getElementById('summaryExportBtn');
+    if (exportNow) exportNow.addEventListener('click', () => exportAllBtn.click());
+
+    document.getElementById('dueSummaryHeading').firstChild.nodeValue = greeting + (me ? ', ' + me.name : '') + ' ';
+    document.getElementById('dueSummaryDay').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+    try {
+      localStorage.setItem('todo_briefing_' + briefingUser, todayStr);
+      // the briefing already covers Monday's untouched-tasks review, so the Today pop-up needn't repeat it
+      if (isMonday) localStorage.setItem('todo_monday_review_' + briefingUser, todayStr);
+    } catch (e) { /* ignore */ }
+    document.getElementById('dueSummaryOverlay').classList.add('open');
+  }
+
   function maybeShowDueSummary() {
     const todayStr = todayDateString();
+    if (briefingOn) {
+      let shownToday = false;
+      try { shownToday = localStorage.getItem('todo_briefing_' + briefingUser) === todayStr; } catch (e) { /* storage unavailable: show it */ }
+      if (!shownToday) { showBriefing(); return; }
+    }
+    document.getElementById('dueSummaryHeading').firstChild.nodeValue = 'Today ';
     const mondayKey = 'todo_monday_review_' + (new URLSearchParams(location.search).get('u') || '');
     let mondayShown = false;
     try { mondayShown = localStorage.getItem(mondayKey) === todayStr; } catch (e) { /* storage unavailable: show it */ }

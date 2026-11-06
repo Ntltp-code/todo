@@ -4,5 +4,7 @@ window.TODO_CONFIG = {
   dataRepo: 'ntltp-code/ntltp-private',
   branch: 'main',
   dir: 'data',
-  pinSalt: 'todolist-v1'
+  pinSalt: 'todolist-v1',
+  // who gets the daily briefing in place of the first Today pop-up of the day (add more ids to give it to others)
+  briefingUsers: ['nick']
 };
