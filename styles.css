@@ -2870,7 +2870,8 @@ body.theme-navy {
 .theme-swatch-blue { background: linear-gradient(135deg, #FFFFFF 50%, #1F5FBF 50%); }
 .theme-swatch-navy { background: linear-gradient(135deg, #FFFFFF 50%, #1B3A6B 50%); }
 /* on a plain white page, Sage's cards and side menu need a visible edge */
-body.layout-sage.theme-navy li.item { border-color:var(--rule); }
+/* v12.41: a navy outline round every task card */
+body.layout-sage.theme-navy li.item { border:1px solid var(--accent-blue); }
 body.layout-sage.theme-navy .tabs .tab.active { box-shadow:0 0 0 1px var(--rule), 0 1px 3px rgba(15,27,51,.08); }
 
 /* ===== v12.38: subtask due dates ===== */
