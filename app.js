@@ -1839,9 +1839,10 @@
 
     // where to start: overdue high priority, then other overdue, then due today, then starred; ties by priority, then oldest due
     const rank = t => (overdue.includes(t) ? (t.priority === 'high' ? 0 : 1) : dueToday.includes(t) ? 2 : 3);
+    const priorityRank = t => ({ high: 0, medium: 1, low: 2 })[t.priority] ?? 1;
     const focus = overdue.concat(dueToday, starred).slice().sort((a, b) =>
       rank(a) - rank(b) ||
-      priorityOrder[a.priority || 'medium'] - priorityOrder[b.priority || 'medium'] ||
+      priorityRank(a) - priorityRank(b) ||
       String(a.dueDate || '9999').localeCompare(String(b.dueDate || '9999'))
     ).slice(0, 3);
 
