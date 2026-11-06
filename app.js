@@ -2265,7 +2265,12 @@
       'DTEND:' + stamp(new Date(start.getTime() + 1800000)),
       'SUMMARY:' + esc(t.text)
     ];
-    if ((t.summary || '').trim()) lines.push('DESCRIPTION:' + esc(t.summary.trim()));
+    // with the Email button on, the entry carries the same details as the email (minus the repeated task name);
+    // otherwise just the summary
+    const details = emailTaskOn
+      ? buildTaskEmail(t).body.split('\n').slice(1).join('\n').replace(/^\n+/, '')
+      : String(t.summary || '').trim();
+    if (details) lines.push('DESCRIPTION:' + esc(details));
     lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + esc(t.text), 'TRIGGER:-PT0M', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR');
     const blob = new Blob([lines.map(fold).join('\r\n') + '\r\n'], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
