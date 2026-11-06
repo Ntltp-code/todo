@@ -590,7 +590,7 @@
     copy.createdAt = Date.now();
     copy.dueDate = next;
     copy.remindAt = null;
-    copy.subtasks = (item.subtasks || []).filter(x => x.type !== 'note').map(x => Object.assign({}, x, { id: uid(), done: false }));
+    copy.subtasks = (item.subtasks || []).filter(x => x.type !== 'note').map(x => Object.assign({}, x, { id: uid(), done: false, dueDate: null }));
     todos.push(copy);
     return next;
   }
@@ -1034,9 +1034,13 @@
         if (realSubtasks.length) {
           const doneCount = realSubtasks.filter(s => s.done).length;
           const progress = document.createElement('span');
-          progress.className = 'subtask-progress' + (doneCount === realSubtasks.length ? ' all-done' : '');
+          // the pill turns red or blue when an open subtask is overdue or due today
+          const subStates = realSubtasks.map(subtaskDueState);
+          const subFlag = subStates.includes('overdue') ? 'overdue' : subStates.includes('today') ? 'today' : '';
+          progress.className = 'subtask-progress' + (doneCount === realSubtasks.length ? ' all-done' : '') + (subFlag ? ' sub-' + subFlag : '');
           progress.textContent = '✓ ' + doneCount + '/' + realSubtasks.length;
-          progress.title = doneCount + ' of ' + realSubtasks.length + ' subtasks done';
+          progress.title = doneCount + ' of ' + realSubtasks.length + ' subtasks done' +
+            (subFlag === 'overdue' ? ', and a subtask is overdue' : subFlag === 'today' ? ', and a subtask is due today' : '');
           taskText.appendChild(progress);
         }
 
@@ -1461,10 +1465,11 @@
             subTypeToggle.textContent = isNote ? '\u2192 Subtask' : '\u2192 Note';
             subTypeToggle.addEventListener('click', () => {
               sub.type = isNote ? 'subtask' : 'note';
-              if (sub.type === 'note') sub.done = false;
+              if (sub.type === 'note') { sub.done = false; sub.dueDate = null; }
               save();
               render();
             });
+            const subDue = isNote ? null : buildSubtaskDue(sub, () => { save(); render(); });
 
             const subDelete = document.createElement('button');
             subDelete.type = 'button';
@@ -1499,6 +1504,7 @@
             subRow.appendChild(subDate);
             subRow.appendChild(subBox);
             subRow.appendChild(subText);
+            if (subDue) subRow.appendChild(subDue);
             subRow.appendChild(subTypeToggle);
             subRow.appendChild(subDelete);
             if (subCancel) subRow.appendChild(subCancel);
@@ -1910,6 +1916,15 @@
     const remindersToday = todos.filter(t => !t.done && t.remindAt && String(t.remindAt).slice(0, 10) === todayStr)
       .sort((a, b) => String(a.remindAt).localeCompare(String(b.remindAt)));
     const doneYesterday = todos.filter(t => t.done && t.completedAt && toISODate(t.completedAt) === yesterday);
+    // subtasks that are overdue or due today, shown under their task's name; tapping one opens the task
+    const subtasksDue = [];
+    todos.forEach(t => {
+      if (t.done) return;
+      (t.subtasks || []).forEach(s => {
+        if (s.type !== 'note' && subtaskDueState(s)) subtasksDue.push({ id: t.id, text: s.text, summary: 'Part of: ' + t.text, dueDate: s.dueDate });
+      });
+    });
+    subtasksDue.sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)));
     const stale = todos.filter(isStale);
 
     // where to start: overdue high priority, then other overdue, then due today, then starred; ties by priority, then oldest due
@@ -1928,6 +1943,7 @@
     const parts = [];
     if (overdue.length) parts.push(overdue.length + ' overdue');
     if (dueToday.length) parts.push(dueToday.length + ' due today');
+    if (subtasksDue.length) parts.push(plural(subtasksDue.length, 'subtask') + ' due');
     if (remindersToday.length) parts.push(plural(remindersToday.length, 'reminder') + ' today');
     const opener = parts.length ? parts.join(', ') + '.' : 'Nothing overdue and nothing due today. A clear run.';
 
@@ -1947,6 +1963,7 @@
       briefingSection('Start with', focus, 'briefing-focus', t => t.dueDate ? formatDue(t.dueDate) : (t.starred ? '★ Starred' : '')) +
       briefingSection('Overdue', overdue, 'overdue', t => formatDue(t.dueDate)) +
       briefingSection('Due today', dueToday, 'due', () => 'Today') +
+      briefingSection('Subtasks due', subtasksDue, 'overdue', t => formatDue(t.dueDate)) +
       briefingSection('Reminders today', remindersToday, '', t => String(t.remindAt).slice(11, 16)) +
       briefingSection('★ Starred', starred, '', t => t.dueDate ? formatDue(t.dueDate) : '') +
       briefingSection('Coming up this week', dueThisWeek, '', t => formatDue(t.dueDate)) +
@@ -2060,7 +2077,8 @@
     const notes = (t.subtasks || []).filter(s => s.type === 'note');
     if (subs.length) {
       lines.push('', 'Subtasks (' + subs.filter(s => s.done).length + ' of ' + subs.length + ' done):');
-      subs.forEach(s => lines.push((s.done ? '[x] ' : '[ ] ') + String(s.text || '')));
+      subs.forEach(s => lines.push((s.done ? '[x] ' : '[ ] ') + String(s.text || '') +
+        (s.dueDate ? ' (due ' + formatDate(s.dueDate) + (subtaskDueState(s) === 'overdue' ? ', overdue' : '') + ')' : '')));
     }
     if (notes.length) {
       lines.push('', 'Notes:');
@@ -2371,6 +2389,39 @@
     newEntryNoteBtn.classList.toggle('selected', type === 'note');
   }
 
+  // a subtask's own due date: a small chip ("+ Due", "Due tomorrow", "Overdue 2 days") with a date box
+  // laid invisibly over it, so a click opens the calendar. Clearing the date in the calendar removes it.
+  function subtaskDueState(sub) {
+    if (sub.done || !sub.dueDate) return '';
+    const today = todayDateString();
+    return sub.dueDate < today ? 'overdue' : sub.dueDate === today ? 'today' : '';
+  }
+
+  function buildSubtaskDue(sub, onChange) {
+    const chip = document.createElement('span');
+    const state = subtaskDueState(sub);
+    chip.className = 'subtask-due' + (sub.dueDate ? ' set' : '') + (state ? ' ' + state : '') + (sub.done ? ' done' : '');
+    const label = document.createElement('span');
+    if (sub.dueDate) {
+      const f = formatDue(sub.dueDate);
+      label.textContent = /^Overdue/.test(f) ? f : 'Due ' + (f === 'Today' || f === 'Tomorrow' ? f.toLowerCase() : f);
+    } else {
+      label.textContent = '+ Due';
+    }
+    const box = document.createElement('input');
+    box.type = 'date';
+    box.value = sub.dueDate || '';
+    box.title = sub.dueDate ? 'Change or clear this subtask\'s due date' : 'Give this subtask a due date';
+    box.setAttribute('aria-label', 'Subtask due date');
+    box.addEventListener('change', () => {
+      sub.dueDate = box.value || null;
+      onChange();
+    });
+    chip.appendChild(label);
+    chip.appendChild(box);
+    return chip;
+  }
+
   function renderNewEntries() {
     newEntryList.innerHTML = '';
     newTaskEntries.forEach(sub => {
@@ -2428,9 +2479,10 @@
       subTypeToggle.textContent = isNote ? '→ Subtask' : '→ Note';
       subTypeToggle.addEventListener('click', () => {
         sub.type = isNote ? 'subtask' : 'note';
-        if (sub.type === 'note') sub.done = false;
+        if (sub.type === 'note') { sub.done = false; sub.dueDate = null; }
         renderNewEntries();
       });
+      const subDue = isNote ? null : buildSubtaskDue(sub, renderNewEntries);
 
       // nothing is saved yet, so removing one doesn't need a confirmation
       const subDelete = document.createElement('button');
@@ -2447,6 +2499,7 @@
       subRow.appendChild(subDate);
       subRow.appendChild(subBox);
       subRow.appendChild(subText);
+      if (subDue) subRow.appendChild(subDue);
       subRow.appendChild(subTypeToggle);
       subRow.appendChild(subDelete);
       newEntryList.appendChild(subRow);
@@ -2801,16 +2854,20 @@
           .map(s => {
             const dateMatch = s.match(/\((\d{4}-\d{2}-\d{2})\)\s*$/);
             const subCreatedAt = dateMatch ? (parseISODateToTimestamp(dateMatch[1]) || createdAt) : createdAt;
-            const withoutDate = dateMatch ? s.slice(0, dateMatch.index).trim() : s;
+            const withoutCreated = dateMatch ? s.slice(0, dateMatch.index).trim() : s;
+            // a subtask's own due date is written as "(due YYYY-MM-DD)" just before the created date
+            const dueMatch = withoutCreated.match(/\s*\(due (\d{4}-\d{2}-\d{2})\)\s*$/i);
+            const subDue = dueMatch ? dueMatch[1] : null;
+            const withoutDate = dueMatch ? withoutCreated.slice(0, dueMatch.index).trim() : withoutCreated;
             const noteMatch = withoutDate.match(/^\(note\)\s*(.*)$/i);
             if (noteMatch) {
               return { id: uid(), text: noteMatch[1], done: false, type: 'note', createdAt: subCreatedAt };
             }
             const match = withoutDate.match(/^\[([ x])\]\s*(.*)$/i);
             if (match) {
-              return { id: uid(), text: match[2], done: match[1].toLowerCase() === 'x', type: 'subtask', createdAt: subCreatedAt };
+              return { id: uid(), text: match[2], done: match[1].toLowerCase() === 'x', type: 'subtask', createdAt: subCreatedAt, dueDate: subDue };
             }
-            return { id: uid(), text: withoutDate, done: false, type: 'subtask', createdAt: subCreatedAt };
+            return { id: uid(), text: withoutDate, done: false, type: 'subtask', createdAt: subCreatedAt, dueDate: subDue };
           });
       } else if (idx.notes !== -1 && row[idx.notes]) {
         const notesRaw = row[idx.notes].trim();
@@ -2915,7 +2972,8 @@
         .map(s => {
           const isNote = s.type === 'note';
           const checkbox = isNote ? '(note)' : '[' + (s.done ? 'x' : ' ') + ']';
-          return checkbox + ' ' + s.text + ' (' + toISODate(s.createdAt || item.createdAt) + ')';
+          const due = !isNote && s.dueDate ? ' (due ' + s.dueDate + ')' : '';
+          return checkbox + ' ' + s.text + due + ' (' + toISODate(s.createdAt || item.createdAt) + ')';
         })
         .join(' | ');
     }
