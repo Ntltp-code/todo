@@ -305,7 +305,8 @@
   }
 
   // trimmed to six well-tested themes; anyone on a removed one falls back to 'auto'
-  const VALID_THEMES = ['auto', 'warm', 'warmdark', 'light', 'dark', 'bw', 'terminal'];
+  const VALID_THEMES = ['auto', 'warm', 'warmdark', 'light', 'dark', 'bw', 'blue', 'navy', 'terminal'];
+  const THEME_BAR_COLOURS = { terminal: '#000000', blue: '#1F5FBF', navy: '#1B3A6B' };
 
   let themeSetting = 'auto';
   const VALID_LAYOUTS = ['original', 'paper', 'sage', 'linen', 'pop', 'aurora', 'pinboard', 'arcade', 'tropical'];
@@ -344,10 +345,10 @@
     if (theme !== undefined) themeSetting = VALID_THEMES.includes(theme) ? theme : 'auto';
     const current = currentTheme();
     const shown = current === 'auto' ? ((darkQuery && darkQuery.matches) ? 'warmdark' : 'warm') : current;
-    document.body.classList.remove('theme-warm', 'theme-warmdark', 'theme-dark', 'theme-colourful', 'theme-notebook', 'theme-forest', 'theme-ocean', 'theme-sunset', 'theme-slate', 'theme-bw', 'theme-wb', 'theme-terminal', 'layout-colours');
+    document.body.classList.remove('theme-warm', 'theme-warmdark', 'theme-dark', 'theme-colourful', 'theme-notebook', 'theme-forest', 'theme-ocean', 'theme-sunset', 'theme-slate', 'theme-bw', 'theme-wb', 'theme-blue', 'theme-navy', 'theme-terminal', 'layout-colours');
     // phones tint their address bar with this; Terminal keeps it black, the new layouts use their own accent
     const themeColour = document.querySelector('meta[name="theme-color"]');
-    if (themeColour) themeColour.content = shown === 'layout' ? LAYOUT_BAR_COLOURS[layoutSetting] : (shown === 'terminal' ? '#000000' : '#C96442');
+    if (themeColour) themeColour.content = shown === 'layout' ? LAYOUT_BAR_COLOURS[layoutSetting] : (THEME_BAR_COLOURS[shown] || '#C96442');
     if (shown === 'layout') {
       document.body.classList.add('layout-colours');
     } else if (shown !== 'light') {

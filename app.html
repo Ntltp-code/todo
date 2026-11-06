@@ -10,9 +10,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<link rel="stylesheet" href="styles.css?v=12.39">
-<script src="config.js?v=12.39"></script>
-<script src="auth-gate.js?v=12.39"></script>
+<link rel="stylesheet" href="styles.css?v=12.40">
+<script src="config.js?v=12.40"></script>
+<script src="auth-gate.js?v=12.40"></script>
 </head>
 <body>
 <script>
@@ -28,7 +28,7 @@
       return cached.data && cached.data[key];
     } catch (e) { return null; }
   }
-  var themes = ['auto', 'warm', 'warmdark', 'light', 'dark', 'bw', 'terminal'];
+  var themes = ['auto', 'warm', 'warmdark', 'light', 'dark', 'bw', 'blue', 'navy', 'terminal'];
   var l = saved('layout', 'work_layout');
   var layout = ['paper', 'sage', 'linen', 'pop', 'aurora', 'pinboard', 'arcade', 'tropical'].indexOf(l) >= 0;
   // the new layouts keep their own theme choice ('layout' = the layout's own colours)
@@ -258,7 +258,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.39</span></h2>
+      <h2>Settings <span class="settings-version">v12.40</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -346,6 +346,14 @@
           <button class="theme-option" type="button" data-theme="bw">
             <span class="theme-swatch theme-swatch-bw"></span>
             <span>High contrast</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="blue">
+            <span class="theme-swatch theme-swatch-blue"></span>
+            <span>Blue &amp; White</span>
+          </button>
+          <button class="theme-option" type="button" data-theme="navy">
+            <span class="theme-swatch theme-swatch-navy"></span>
+            <span>Navy &amp; White</span>
           </button>
           <button class="theme-option" type="button" data-theme="terminal">
             <span class="theme-swatch theme-swatch-terminal"></span>
@@ -529,6 +537,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.40</span> Two plain, easy-to-read themes: Blue &amp; White (white cards on a pale blue page) and Navy &amp; White (all white with navy). Made with the Sage layout in mind, and they work with every layout.</li>
           <li><span class="changelog-version">v12.39</span> A task with a subtask that is due today or overdue now behaves like a due or overdue task: it appears on the Today tab, its subtask is listed under "Subtasks due" in the Today pop-up, and it moves up within its priority group when sorted by Priority.</li>
           <li><span class="changelog-version">v12.38</span> Subtasks can have their own due date: click "+ Due" on a subtask to pick one. It turns blue when due today and red when overdue, the subtask count on the task in your list changes colour to match, and email, CSV backups and the briefing include it.</li>
           <li><span class="changelog-version">v12.37</span> The New Task window can be resized the same way as the task window: drag its right edge, bottom edge or corner. Its size is remembered separately on each device; double-click the corner to reset it.</li>
@@ -733,8 +742,8 @@
 
 <script>/* secret boxes are plain text boxes drawn as dots, so browsers never offer to "save a password"; a browser that cannot draw the dots gets a real password box instead */
 document.querySelectorAll("input.masked").forEach(function (i) { var s = ""; try { s = getComputedStyle(i).webkitTextSecurity || ""; } catch (e) {} if (s !== "disc") i.type = "password"; });</script>
-<script src="gh-storage.js?v=12.39"></script>
-<script src="app.js?v=12.39"></script>
+<script src="gh-storage.js?v=12.40"></script>
+<script src="app.js?v=12.40"></script>
 <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}</script>
 </body>
 </html>

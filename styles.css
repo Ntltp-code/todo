@@ -2854,6 +2854,25 @@ body.layout-sage li.item:hover:not(.selected) { background:color-mix(in srgb, va
 /* the date was squeezed into 34px, so longer dates ran into the tick box */
 .subtask-date { width:auto; min-width:46px; margin-right:6px; }
 
+/* ===== v12.40: plain blue-and-white themes (made for Sage, and work with every layout) ===== */
+/* Blue & White: white cards on a very pale blue page, a mid-blue accent. Navy & White: an all-white page,
+   navy accent. Both keep red for overdue and blue for due today, and all text passes 4.5:1 contrast. */
+body.theme-blue {
+  --paper:#FFFFFF; --paper-dark:#F3F7FC; --ink:#12233D; --ink-muted:#4A5B73; --rule:#D6E1EF;
+  --stamp:#B42318; --check:#2C6E8F; --check-bg:#E3F0F6; --accent-blue:#1F5FBF; --outer-bg:#EEF3FA;
+  --due-highlight:#E3EDFB; --priority-medium:#8A5A00; --overdue:#B42318; --due:#1F5FBF;
+}
+body.theme-navy {
+  --paper:#FFFFFF; --paper-dark:#F4F6FA; --ink:#0F1B33; --ink-muted:#4B5670; --rule:#DDE3EE;
+  --stamp:#B42318; --check:#2C6E8F; --check-bg:#E3F0F6; --accent-blue:#1B3A6B; --outer-bg:#FFFFFF;
+  --due-highlight:#E6EEFA; --priority-medium:#8A5A00; --overdue:#B42318; --due:#1E5BB8;
+}
+.theme-swatch-blue { background: linear-gradient(135deg, #FFFFFF 50%, #1F5FBF 50%); }
+.theme-swatch-navy { background: linear-gradient(135deg, #FFFFFF 50%, #1B3A6B 50%); }
+/* on a plain white page, Sage's cards and side menu need a visible edge */
+body.layout-sage.theme-navy li.item { border-color:var(--rule); }
+body.layout-sage.theme-navy .tabs .tab.active { box-shadow:0 0 0 1px var(--rule), 0 1px 3px rgba(15,27,51,.08); }
+
 /* ===== v12.38: subtask due dates ===== */
 /* a small chip; the date box sits invisibly on top of it, so a click opens the calendar */
 .subtask-due { position:relative; flex:none; display:inline-flex; align-items:center; height:24px; padding:0 9px; border:1px dashed var(--rule); border-radius:999px; font-size:11px; font-weight:700; color:var(--ink-muted); white-space:nowrap; cursor:pointer; }
