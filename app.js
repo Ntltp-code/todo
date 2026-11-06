@@ -825,13 +825,13 @@
         if (byPriority) return byPriority;
         const byUrgency = urgency(a) - urgency(b);
         if (byUrgency) return byUrgency;
-        return urgency(a) === 0 ? a.dueDate.localeCompare(b.dueDate) : 0;
+        return urgency(a) === 0 ? String(a.dueDate).localeCompare(String(b.dueDate)) : 0;
       },
       due: (a, b) => {
         if (!a.dueDate && !b.dueDate) return 0;
         if (!a.dueDate) return 1;
         if (!b.dueDate) return -1;
-        return a.dueDate.localeCompare(b.dueDate);
+        return String(a.dueDate).localeCompare(String(b.dueDate));
       },
       category: (a, b) => {
         const catA = (a.category || '').toLowerCase();
@@ -849,7 +849,7 @@
         if (!asB) return -1;
         return asA.localeCompare(asB);
       },
-      name: (a, b) => a.text.toLowerCase().localeCompare(b.text.toLowerCase())
+      name: (a, b) => String(a.text || '').toLowerCase().localeCompare(String(b.text || '').toLowerCase())
     };
     const todayStr = todayDateString();
     const visible = todos
@@ -1026,7 +1026,7 @@
         row.className = 'row';
         row.appendChild(box);
         row.appendChild(taskText);
-        const summaryText = (item.summary || '').trim();
+        const summaryText = String(item.summary || '').trim();
         if (summaryText) {
           const summaryLine = document.createElement('div');
           summaryLine.className = 'task-summary';
@@ -1770,7 +1770,7 @@
       }
     });
 
-    const byDue = (a, b) => (a.dueDate || '').localeCompare(b.dueDate || '');
+    const byDue = (a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || ''));
     overdue.sort(byDue);
     dueThisWeek.sort(byDue);
 
@@ -1798,12 +1798,25 @@
   const briefingOn = ((window.TODO_CONFIG && TODO_CONFIG.briefingUsers) || []).includes(briefingUser);
   const briefingBtn = document.getElementById('briefingBtn');
   if (briefingOn) briefingBtn.hidden = false;
-  briefingBtn.addEventListener('click', () => showBriefing());
+  // if something in the list trips the briefing up, say so on screen (instead of silently doing nothing)
+  // and fall back to the usual Today pop-up
+  function tryBriefing(fallback) {
+    try {
+      showBriefing();
+      return true;
+    } catch (err) {
+      console.error('Briefing failed', err);
+      showToast('The briefing couldn\'t open (' + (err && err.message ? err.message : String(err)) + '). Please tell Claude this message.');
+      if (fallback) fallback();
+      return false;
+    }
+  }
+  briefingBtn.addEventListener('click', () => tryBriefing());
 
   function briefingSection(title, items, extraClass, rightText, note) {
     if (!items.length) return '';
     const rows = items.map(t => {
-      const summary = (t.summary || '').trim();
+      const summary = String(t.summary || '').trim();
       return '<li data-id="' + escapeHtml(t.id) + '" tabindex="0" title="Open this task"><span class="due-summary-task">' + escapeHtml(t.text) +
         (summary ? '<span class="briefing-summary">' + escapeHtml(summary) + '</span>' : '') + '</span>' +
         '<span class="due-summary-date">' + escapeHtml(rightText(t)) + '</span></li>';
@@ -1819,8 +1832,8 @@
     const yesterday = toISODate(Date.now() - 86400000);
     const { overdue, dueToday, dueThisWeek } = getDueSummaryData();
     const starred = todos.filter(t => !t.done && t.starred && !overdue.includes(t) && !dueToday.includes(t));
-    const remindersToday = todos.filter(t => !t.done && t.remindAt && t.remindAt.slice(0, 10) === todayStr)
-      .sort((a, b) => a.remindAt.localeCompare(b.remindAt));
+    const remindersToday = todos.filter(t => !t.done && t.remindAt && String(t.remindAt).slice(0, 10) === todayStr)
+      .sort((a, b) => String(a.remindAt).localeCompare(String(b.remindAt)));
     const doneYesterday = todos.filter(t => t.done && t.completedAt && toISODate(t.completedAt) === yesterday);
     const stale = todos.filter(isStale);
 
@@ -1829,7 +1842,7 @@
     const focus = overdue.concat(dueToday, starred).slice().sort((a, b) =>
       rank(a) - rank(b) ||
       priorityOrder[a.priority || 'medium'] - priorityOrder[b.priority || 'medium'] ||
-      (a.dueDate || '9999').localeCompare(b.dueDate || '9999')
+      String(a.dueDate || '9999').localeCompare(String(b.dueDate || '9999'))
     ).slice(0, 3);
 
     const hour = new Date().getHours();
@@ -1858,7 +1871,7 @@
       briefingSection('Start with', focus, 'briefing-focus', t => t.dueDate ? formatDue(t.dueDate) : (t.starred ? '★ Starred' : '')) +
       briefingSection('Overdue', overdue, 'overdue', t => formatDue(t.dueDate)) +
       briefingSection('Due today', dueToday, 'due', () => 'Today') +
-      briefingSection('Reminders today', remindersToday, '', t => t.remindAt.slice(11, 16)) +
+      briefingSection('Reminders today', remindersToday, '', t => String(t.remindAt).slice(11, 16)) +
       briefingSection('★ Starred', starred, '', t => t.dueDate ? formatDue(t.dueDate) : '') +
       briefingSection('Coming up this week', dueThisWeek, '', t => formatDue(t.dueDate)) +
       briefingSection('Finished yesterday', doneYesterday, 'briefing-done', () => '✓') +
@@ -1883,7 +1896,7 @@
     if (briefingOn) {
       let shownToday = false;
       try { shownToday = localStorage.getItem('todo_briefing_' + briefingUser) === todayStr; } catch (e) { /* storage unavailable: show it */ }
-      if (!shownToday) { showBriefing(); return; }
+      if (!shownToday && tryBriefing()) return;
     }
     document.getElementById('dueSummaryHeading').firstChild.nodeValue = 'Today ';
     const mondayKey = 'todo_monday_review_' + (new URLSearchParams(location.search).get('u') || '');
