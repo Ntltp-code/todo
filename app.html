@@ -10,9 +10,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<link rel="stylesheet" href="styles.css?v=12.36">
-<script src="config.js?v=12.36"></script>
-<script src="auth-gate.js?v=12.36"></script>
+<link rel="stylesheet" href="styles.css?v=12.37">
+<script src="config.js?v=12.37"></script>
+<script src="auth-gate.js?v=12.37"></script>
 </head>
 <body>
 <script>
@@ -169,6 +169,9 @@
             <button id="cancelAddBtn" type="button">Cancel</button>
           </div>
         </div>
+        <div class="tw-resize tw-resize-right" data-resize="x" aria-hidden="true"></div>
+        <div class="tw-resize tw-resize-bottom" data-resize="y" aria-hidden="true"></div>
+        <div class="tw-resize tw-resize-corner" data-resize="xy" tabindex="0" role="button" aria-label="Resize window: drag, or use the arrow keys. Double-click or press Delete to reset." title="Drag to resize. Double-click to reset."></div>
       </div>
     </div>
 
@@ -255,7 +258,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.36</span></h2>
+      <h2>Settings <span class="settings-version">v12.37</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -526,6 +529,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.37</span> The New Task window can be resized the same way as the task window: drag its right edge, bottom edge or corner. Its size is remembered separately on each device; double-click the corner to reset it.</li>
           <li><span class="changelog-version">v12.36</span> The task window can be resized: drag its right edge, bottom edge or bottom-right corner (or use the arrow keys on the corner). Each device remembers your size; double-click the corner to go back to the standard size.</li>
           <li><span class="changelog-version">v12.35</span> Add to calendar (Nick only for now): the calendar entry's notes now include the task's full details, the same as Email: summary, status, priority, due date, people, subtasks and notes.</li>
           <li><span class="changelog-version">v12.34</span> Email a task (Nick only for now): an Email button in the task window opens a ready-made draft of the task, with its summary, details, subtasks and notes, in your email app, Gmail or Outlook on the web, or copies it to paste anywhere. Nothing is sent until you press Send.</li>
@@ -727,8 +731,8 @@
 
 <script>/* secret boxes are plain text boxes drawn as dots, so browsers never offer to "save a password"; a browser that cannot draw the dots gets a real password box instead */
 document.querySelectorAll("input.masked").forEach(function (i) { var s = ""; try { s = getComputedStyle(i).webkitTextSecurity || ""; } catch (e) {} if (s !== "disc") i.type = "password"; });</script>
-<script src="gh-storage.js?v=12.36"></script>
-<script src="app.js?v=12.36"></script>
+<script src="gh-storage.js?v=12.37"></script>
+<script src="app.js?v=12.37"></script>
 <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}</script>
 </body>
 </html>

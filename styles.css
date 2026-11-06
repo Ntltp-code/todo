@@ -2869,10 +2869,18 @@ html.tw-resizing, html.tw-resizing * { user-select:none !important; }
 html.tw-resizing-x, html.tw-resizing-x * { cursor:ew-resize !important; }
 html.tw-resizing-y, html.tw-resizing-y * { cursor:ns-resize !important; }
 html.tw-resizing-xy, html.tw-resizing-xy * { cursor:nwse-resize !important; }
-/* phones: the window fills the screen, so there is nothing to resize */
+/* v12.37: the New Task window resizes too. Its form scrolls inside it (not the whole window), so the
+   drag handles stay on the window's edges instead of scrolling away with the form. */
+#newTaskOverlay .new-task-window { position:relative; display:flex; flex-direction:column; overflow:hidden; }
+#newTaskOverlay .new-task-titlebar { flex:none; }
+#newTaskOverlay .add-row { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+#newTaskOverlay .new-task-window.sized { max-width:calc(100vw - 32px); }
+#newTaskOverlay .tw-resize-right { top:44px; }
+/* phones: the windows fill the screen width, so there is nothing to resize */
 @media (max-width: 640px) {
   .tw-resize { display:none; }
   .task-edit-window.sized { width:100% !important; height:100% !important; max-width:100%; }
+  #newTaskOverlay .new-task-window.sized { width:100% !important; height:auto !important; max-width:100%; }
 }
 
 /* ===== v12.34: email a task ===== */
