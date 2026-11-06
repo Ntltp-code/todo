@@ -6,5 +6,7 @@ window.TODO_CONFIG = {
   dir: 'data',
   pinSalt: 'todolist-v1',
   // who gets the daily briefing in place of the first Today pop-up of the day (add more ids to give it to others)
-  briefingUsers: ['nick']
+  briefingUsers: ['nick'],
+  // who gets the Email button in the task window (add more ids to give it to others)
+  emailTaskUsers: ['nick']
 };

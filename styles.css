@@ -2854,6 +2854,13 @@ body.layout-sage li.item:hover:not(.selected) { background:color-mix(in srgb, va
 /* the date was squeezed into 34px, so longer dates ran into the tick box */
 .subtask-date { width:auto; min-width:46px; margin-right:6px; }
 
+/* ===== v12.34: email a task ===== */
+.email-menu-wrap { position:relative; flex:none; }
+.email-menu { display:none; position:absolute; right:0; top:calc(100% + 4px); z-index:20; min-width:190px; padding:4px; border:1px solid var(--rule); border-radius:10px; background:var(--paper); box-shadow:0 10px 30px -8px rgba(0,0,0,.45); }
+.email-menu.open { display:block; }
+.email-menu button { display:block; width:100%; min-height:38px; padding:0 12px; border:0; border-radius:6px; background:transparent; color:var(--ink); font-family:inherit; font-size:13px; font-weight:600; text-align:left; cursor:pointer; }
+.email-menu button:hover, .email-menu button:focus-visible { background:var(--paper-dark); outline:none; }
+
 /* ===== v12.31: daily briefing ===== */
 .briefing-opener { margin:4px 0 20px; font-size:17px; font-weight:600; line-height:1.4; color:var(--ink); }
 .briefing-summary { display:block; margin-top:2px; font-size:13px; font-style:italic; color:var(--ink-muted); }

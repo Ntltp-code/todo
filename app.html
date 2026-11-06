@@ -10,9 +10,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<link rel="stylesheet" href="styles.css?v=12.33">
-<script src="config.js?v=12.33"></script>
-<script src="auth-gate.js?v=12.33"></script>
+<link rel="stylesheet" href="styles.css?v=12.34">
+<script src="config.js?v=12.34"></script>
+<script src="auth-gate.js?v=12.34"></script>
 </head>
 <body>
 <script>
@@ -252,7 +252,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.33</span></h2>
+      <h2>Settings <span class="settings-version">v12.34</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -523,6 +523,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.34</span> Email a task (Nick only for now): an Email button in the task window opens a ready-made draft of the task, with its summary, details, subtasks and notes, in your email app, Gmail or Outlook on the web, or copies it to paste anywhere. Nothing is sent until you press Send.</li>
           <li><span class="changelog-version">v12.33</span> Fixed the briefing not opening ("priorityOrder is not defined") when two of the tasks to start with were equally urgent.</li>
           <li><span class="changelog-version">v12.32</span> The Briefing button copes with unusual task data, and if the briefing ever can't open it now says why on screen (and shows the usual Today pop-up on opening) instead of doing nothing.</li>
           <li><span class="changelog-version">v12.31</span> Daily briefing (Nick only for now): the first time you open the app each day, a briefing replaces the Today pop-up, with where to start, overdue and due-today tasks, today's reminders, the week ahead, what you finished yesterday and anything untouched for 14+ days. A Briefing button brings it back any time.</li>
@@ -721,8 +722,8 @@
 
 <script>/* secret boxes are plain text boxes drawn as dots, so browsers never offer to "save a password"; a browser that cannot draw the dots gets a real password box instead */
 document.querySelectorAll("input.masked").forEach(function (i) { var s = ""; try { s = getComputedStyle(i).webkitTextSecurity || ""; } catch (e) {} if (s !== "disc") i.type = "password"; });</script>
-<script src="gh-storage.js?v=12.33"></script>
-<script src="app.js?v=12.33"></script>
+<script src="gh-storage.js?v=12.34"></script>
+<script src="app.js?v=12.34"></script>
 <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}</script>
 </body>
 </html>

@@ -1298,6 +1298,7 @@
           nameRow.className = 'edit-name-row';
           nameRow.appendChild(field('Task', editName));
           nameRow.appendChild(starBtn);
+          if (emailTaskOn) nameRow.appendChild(buildEmailMenu(item));
 
           editFields.appendChild(nameRow);
           editFields.appendChild(field('Summary', editSummary));
@@ -1957,6 +1958,148 @@
     closeDueSummary();
     setPage('today');
   });
+
+  // ---------- email a task (only for the users listed in config.js emailTaskUsers, for now) ----------
+  // Opens a ready-made draft; nothing is ever sent without the person pressing Send in their email app.
+  const emailTaskOn = ((window.TODO_CONFIG && TODO_CONFIG.emailTaskUsers) || [])
+    .includes((new URLSearchParams(location.search).get('u') || '').toLowerCase());
+  const MAILTO_LIMIT = 1700;   // longer mailto links can be cut off or refused by some email apps (about 2000 is the usual ceiling)
+
+  function buildTaskEmail(t) {
+    const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+    const name = String(t.text || '').trim() || 'Untitled task';
+    const lines = ['Task: ' + name];
+    const summary = String(t.summary || '').trim();
+    if (summary) lines.push(summary);
+    lines.push('');
+    lines.push('Status: ' + (t.done ? 'Completed' + (t.completedAt ? ' ' + formatDate(t.completedAt) : '')
+      : t.pending ? 'Pending' + (t.snoozeUntil ? ' (sleeping until ' + formatDate(t.snoozeUntil) + ')' : '') : 'Open'));
+    lines.push('Priority: ' + cap(t.priority || 'medium'));
+    if (t.dueDate) lines.push('Due: ' + formatDate(t.dueDate) + (!t.done && isPastDue(t.dueDate) ? ' (overdue)' : ''));
+    if (t.category) lines.push('Category: ' + t.category);
+    const assigned = getAssigneesText(t).replace(/;\s*/g, ', ');
+    if (assigned) lines.push('Assigned to: ' + assigned);
+    if (t.assignedBy) lines.push('Assigned by / from: ' + t.assignedBy);
+    if (t.repeat) lines.push('Repeats: ' + cap(t.repeat));
+    if (t.remindAt && !t.done) lines.push('Reminder: ' + formatReminder(t.remindAt));
+    const subs = (t.subtasks || []).filter(s => s.type !== 'note');
+    const notes = (t.subtasks || []).filter(s => s.type === 'note');
+    if (subs.length) {
+      lines.push('', 'Subtasks (' + subs.filter(s => s.done).length + ' of ' + subs.length + ' done):');
+      subs.forEach(s => lines.push((s.done ? '[x] ' : '[ ] ') + String(s.text || '')));
+    }
+    if (notes.length) {
+      lines.push('', 'Notes:');
+      notes.forEach(s => lines.push('- ' + String(s.text || '') + (s.createdAt ? ' (' + formatDate(s.createdAt) + ')' : '')));
+    }
+    return { subject: 'Task: ' + name, body: lines.join('\n') };
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise((resolve, reject) => {
+      const box = document.createElement('textarea');
+      box.value = text;
+      box.style.position = 'fixed';
+      box.style.opacity = '0';
+      document.body.appendChild(box);
+      box.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(box);
+      if (ok) resolve(); else reject(new Error('copy failed'));
+    });
+  }
+
+  function openTaskEmail(t, how) {
+    const { subject, body } = buildTaskEmail(t);
+    const q = encodeURIComponent;
+    if (how === 'copy') {
+      copyText(body)
+        .then(() => showToast('Task copied. Paste it into an email or message.'))
+        .catch(() => showToast('Couldn\'t copy here. Try one of the email options instead.'));
+      return;
+    }
+    if (how === 'share') {
+      navigator.share({ title: subject, text: body }).catch(() => { /* closed without sharing */ });
+      return;
+    }
+    if (how === 'gmail') {
+      window.open('https://mail.google.com/mail/?view=cm&fs=1&su=' + q(subject) + '&body=' + q(body), '_blank', 'noopener');
+      return;
+    }
+    if (how === 'outlook') {
+      window.open('https://outlook.office.com/mail/deeplink/compose?subject=' + q(subject) + '&body=' + q(body), '_blank', 'noopener');
+      return;
+    }
+    // the computer's own email app
+    let mailBody = body.replace(/\n/g, '\r\n');
+    let tooLong = false;
+    while (('mailto:?subject=' + q(subject) + '&body=' + q(mailBody)).length > MAILTO_LIMIT && mailBody.length > 200) {
+      tooLong = true;
+      mailBody = mailBody.slice(0, Math.floor(mailBody.length * 0.85));
+    }
+    if (tooLong) {
+      mailBody = mailBody.replace(/\s+\S*$/, '') + '\r\n\r\n[Shortened: the full task is on the clipboard, ready to paste]';
+      copyText(body).catch(() => { /* the draft still opens */ });
+      showToast('This task is long, so the draft is shortened. The full task is copied, ready to paste.');
+    }
+    const link = document.createElement('a');
+    link.href = 'mailto:?subject=' + q(subject) + '&body=' + q(mailBody);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // one listener for every email menu: a click anywhere outside an open menu closes it
+  document.addEventListener('click', e => {
+    document.querySelectorAll('.email-menu.open').forEach(menu => {
+      if (menu.parentElement.contains(e.target)) return;
+      menu.classList.remove('open');
+      menu.previousElementSibling.setAttribute('aria-expanded', 'false');
+    });
+  });
+
+  function buildEmailMenu(t) {
+    const wrap = document.createElement('div');
+    wrap.className = 'email-menu-wrap';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'star-toggle email-task-btn';
+    btn.textContent = '✉ Email';
+    btn.setAttribute('aria-haspopup', 'true');
+    btn.setAttribute('aria-expanded', 'false');
+    const menu = document.createElement('div');
+    menu.className = 'email-menu';
+    menu.setAttribute('role', 'menu');
+    const options = [['app', 'Email app'], ['gmail', 'Gmail'], ['outlook', 'Outlook on the web'], ['copy', 'Copy']];
+    const touch = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+    if (navigator.share && touch) options.unshift(['share', 'Share…']);
+    const setOpen = open => {
+      menu.classList.toggle('open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
+    options.forEach(([how, label]) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.setAttribute('role', 'menuitem');
+      item.textContent = label;
+      item.addEventListener('click', () => {
+        setOpen(false);
+        openTaskEmail(t, how);
+      });
+      menu.appendChild(item);
+    });
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      setOpen(!menu.classList.contains('open'));
+    });
+    menu.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); btn.focus(); }
+    });
+    wrap.appendChild(btn);
+    wrap.appendChild(menu);
+    return wrap;
+  }
 
   // ---------- reminders ----------
   // item.remindAt is a local 'YYYY-MM-DDTHH:MM' time; dismissing a reminder clears it, so that syncs to other devices.
