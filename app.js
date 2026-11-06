@@ -135,9 +135,35 @@
     return !t.done && !t.pending && Date.now() - (t.updatedAt || t.createdAt || 0) > STALE_DAYS * 86400000;
   }
 
-  // the Today tab: overdue, due today, or starred
+  // the earliest due date among a task's open subtasks that are due today or overdue (null if none)
+  function openSubtaskDue(t) {
+    if (t.done) return null;
+    const today = todayDateString();
+    let earliest = null;
+    (t.subtasks || []).forEach(s => {
+      if (s.type === 'note' || s.done || !s.dueDate) return;
+      const d = String(s.dueDate);
+      if (d <= today && (!earliest || d < earliest)) earliest = d;
+    });
+    return earliest;
+  }
+
+  // the Today tab: overdue, due today, starred, or with a subtask that is due today or overdue
   function isTodayTask(t) {
-    return !t.done && (!!t.starred || t.dueDate === todayDateString() || isPastDue(t.dueDate));
+    return !t.done && (!!t.starred || t.dueDate === todayDateString() || isPastDue(t.dueDate) || !!openSubtaskDue(t));
+  }
+
+  // subtasks that are due today or overdue, as rows for the Today pop-up and the briefing: each shows the
+  // subtask under its task's name, and tapping it opens the task
+  function getSubtasksDue() {
+    const rows = [];
+    todos.forEach(t => {
+      if (t.done) return;
+      (t.subtasks || []).forEach(s => {
+        if (s.type !== 'note' && subtaskDueState(s)) rows.push({ id: t.id, text: s.text, summary: 'Part of: ' + t.text, dueDate: s.dueDate });
+      });
+    });
+    return rows.sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)));
   }
 
   function formatDateDDMM(timestamp) {
@@ -888,18 +914,30 @@
 
     const priorityOrder = { high: 0, medium: 1, low: 2 };
     const sortComparators = {
-      // within each priority: overdue (oldest first), then due today, then everything else as it was
+      // within each priority: overdue (oldest first), then due today, then everything else as it was.
+      // A task counts as overdue or due today when it is, or when one of its open subtasks is.
       priority: (a, b) => {
-        const urgency = t => {
+        const ownUrgency = t => {
           if (t.done || !t.dueDate) return 2;
           if (t.dueDate === todayStr) return 1;
           return isPastDue(t.dueDate) ? 0 : 2;
+        };
+        const urgency = t => {
+          const sub = openSubtaskDue(t);
+          return Math.min(ownUrgency(t), sub ? (sub === todayStr ? 1 : 0) : 2);
+        };
+        // for overdue tasks: the oldest overdue date, the task's own or a subtask's
+        const overdueSince = t => {
+          const own = ownUrgency(t) === 0 ? String(t.dueDate) : null;
+          const sub = openSubtaskDue(t);
+          const subOverdue = sub && sub < todayStr ? sub : null;
+          return own && subOverdue ? (own < subOverdue ? own : subOverdue) : (own || subOverdue || '');
         };
         const byPriority = priorityOrder[a.priority || 'medium'] - priorityOrder[b.priority || 'medium'];
         if (byPriority) return byPriority;
         const byUrgency = urgency(a) - urgency(b);
         if (byUrgency) return byUrgency;
-        return urgency(a) === 0 ? String(a.dueDate).localeCompare(String(b.dueDate)) : 0;
+        return urgency(a) === 0 ? overdueSince(a).localeCompare(overdueSince(b)) : 0;
       },
       due: (a, b) => {
         if (!a.dueDate && !b.dueDate) return 0;
@@ -1916,15 +1954,7 @@
     const remindersToday = todos.filter(t => !t.done && t.remindAt && String(t.remindAt).slice(0, 10) === todayStr)
       .sort((a, b) => String(a.remindAt).localeCompare(String(b.remindAt)));
     const doneYesterday = todos.filter(t => t.done && t.completedAt && toISODate(t.completedAt) === yesterday);
-    // subtasks that are overdue or due today, shown under their task's name; tapping one opens the task
-    const subtasksDue = [];
-    todos.forEach(t => {
-      if (t.done) return;
-      (t.subtasks || []).forEach(s => {
-        if (s.type !== 'note' && subtaskDueState(s)) subtasksDue.push({ id: t.id, text: s.text, summary: 'Part of: ' + t.text, dueDate: s.dueDate });
-      });
-    });
-    subtasksDue.sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)));
+    const subtasksDue = getSubtasksDue();
     const stale = todos.filter(isStale);
 
     // where to start: overdue high priority, then other overdue, then due today, then starred; ties by priority, then oldest due
@@ -2002,7 +2032,8 @@
     const stale = isMonday ? todos.filter(isStale) : [];
     const backupDays = lastExportAt ? Math.floor((Date.now() - lastExportAt) / 86400000) : null;
     const needsBackup = isMonday && (backupDays === null || backupDays > 30);
-    if (!overdue.length && !dueToday.length && !starred.length && !stale.length && !needsBackup) return;
+    const subtasksDue = getSubtasksDue();
+    if (!overdue.length && !dueToday.length && !subtasksDue.length && !starred.length && !stale.length && !needsBackup) return;
 
     const staleSection = stale.length
       ? '<div class="due-summary-section"><div class="due-summary-title">Not touched in ' + STALE_DAYS + '+ days (' + stale.length + ')</div>' +
@@ -2021,6 +2052,7 @@
     body.innerHTML =
       buildDueSummarySection('Overdue', overdue, 'overdue') +
       buildDueSummarySection('Due today', dueToday, 'due') +
+      briefingSection('Subtasks due', subtasksDue, 'overdue', t => formatDue(t.dueDate)) +
       buildDueSummarySection('★ Starred', starred) +
       staleSection + backupSection;
     const exportNow = document.getElementById('summaryExportBtn');
