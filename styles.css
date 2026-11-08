@@ -2934,6 +2934,7 @@ html.tw-resizing-xy, html.tw-resizing-xy * { cursor:nwse-resize !important; }
 .due-summary-section.briefing-done .due-summary-task { color:var(--ink-muted); text-decoration:line-through; }
 .due-summary-section.briefing-done .due-summary-date { color:var(--check); font-weight:700; }
 #briefingBtn[hidden] { display:none; }
+.due-summary-section.briefing-update .due-summary-title { color:var(--priority-medium); }
 
 /* ===== v12.30: reminders ===== */
 .reminder-mark { font-size:.85em; }

@@ -528,6 +528,12 @@
       savedFingerprints.set(t.id, fp);
     });
   }
+  // remember the list as it was loaded (or arrived from another device), so the first edit after that
+  // is stamped too; without this, the first change in each session kept its old updated time
+  function rememberFingerprints() {
+    savedFingerprints.clear();
+    todos.forEach(t => savedFingerprints.set(t.id, fingerprint(t)));
+  }
 
   // ---------- toasts, undo and in-page confirm ----------
   const toastBox = document.getElementById('toastBox');
@@ -692,6 +698,7 @@
     try {
       const r = await storageGet(STORAGE_KEY);
       todos = r ? JSON.parse(r.value) : [];
+      rememberFingerprints();
       const c = await storageGet(CATEGORIES_KEY);
       if (c) { const a = JSON.parse(c.value); if (Array.isArray(a)) categories = a; }
       const a2 = await storageGet(ASSIGNEES_KEY);
@@ -707,6 +714,11 @@
   });
 
   async function load() {
+    try {
+      const updatesResult = await storageGet(TASK_UPDATES_KEY);
+      taskReminderUpdatesOn = !(updatesResult && updatesResult.value === 'off');
+    } catch (e) { /* stays on */ }
+    taskUpdatesToggle.checked = taskReminderUpdatesOn;
     try {
       const sizeResult = await storageGet(TASK_TEXT_SIZE_KEY);
       applyTaskTextSize(sizeResult ? sizeResult.value : 1);
@@ -736,6 +748,7 @@
     } catch (e) {
       todos = [];
     }
+    rememberFingerprints();
     if (checkPendingDueDates()) {
       save();
     }
@@ -1918,6 +1931,17 @@
   const briefingOn = ((window.TODO_CONFIG && TODO_CONFIG.briefingUsers) || []).includes(briefingUser);
   const briefingBtn = document.getElementById('briefingBtn');
   if (briefingOn) briefingBtn.hidden = false;
+
+  // Settings → Daily Briefing → Task Reminder Updates: the briefing's weekly "Needs an update" list
+  // (on unless turned off; saved and synced like the theme)
+  const TASK_UPDATES_KEY = STORAGE_PREFIX + 'taskReminderUpdates';
+  let taskReminderUpdatesOn = true;
+  const taskUpdatesToggle = document.getElementById('taskReminderUpdatesToggle');
+  if (briefingOn) document.getElementById('briefingSettings').hidden = false;
+  taskUpdatesToggle.addEventListener('change', () => {
+    taskReminderUpdatesOn = taskUpdatesToggle.checked;
+    queuedStorageSet(TASK_UPDATES_KEY, taskReminderUpdatesOn ? 'on' : 'off');
+  });
   // if something in the list trips the briefing up, say so on screen (instead of silently doing nothing)
   // and fall back to the usual Today pop-up
   function tryBriefing(fallback) {
@@ -1956,7 +1980,11 @@
       .sort((a, b) => String(a.remindAt).localeCompare(String(b.remindAt)));
     const doneYesterday = todos.filter(t => t.done && t.completedAt && toISODate(t.completedAt) === yesterday);
     const subtasksDue = getSubtasksDue();
-    const stale = todos.filter(isStale);
+    // the weekly review: open To-do tasks (not pending) that haven't been changed for over a week, oldest first.
+    // Any change to a task counts, including adding a note or ticking a subtask.
+    const lastChanged = t => t.updatedAt || t.createdAt || 0;
+    const needsUpdate = !taskReminderUpdatesOn ? [] : todos.filter(t => !t.done && !t.pending && Date.now() - lastChanged(t) > 7 * 86400000)
+      .sort((a, b) => lastChanged(a) - lastChanged(b));
 
     // where to start: overdue high priority, then other overdue, then due today, then starred; ties by priority, then oldest due
     const rank = t => (overdue.includes(t) ? (t.priority === 'high' ? 0 : 1) : dueToday.includes(t) ? 2 : 3);
@@ -1975,6 +2003,7 @@
     if (overdue.length) parts.push(overdue.length + ' overdue');
     if (dueToday.length) parts.push(dueToday.length + ' due today');
     if (subtasksDue.length) parts.push(plural(subtasksDue.length, 'subtask') + ' due');
+    if (needsUpdate.length) parts.push(needsUpdate.length + ' to update');
     if (remindersToday.length) parts.push(plural(remindersToday.length, 'reminder') + ' today');
     const opener = parts.length ? parts.join(', ') + '.' : 'Nothing overdue and nothing due today. A clear run.';
 
@@ -1986,7 +2015,11 @@
         (encryptionOn() ? ' Your list is encrypted, so a backup is the only way back if the passphrase is forgotten.' : '') +
         ' <button type="button" class="link-btn" id="summaryExportBtn">Export now</button></p></div>'
       : '';
-    const staleShown = stale.slice(0, 10);
+    const updateShown = needsUpdate.slice(0, 15);
+    const daysAgo = t => {
+      const days = Math.floor((Date.now() - lastChanged(t)) / 86400000);
+      return days + ' days ago';
+    };
 
     const body = document.getElementById('dueSummaryBody');
     body.innerHTML =
@@ -1999,8 +2032,9 @@
       briefingSection('★ Starred', starred, '', t => t.dueDate ? formatDue(t.dueDate) : '') +
       briefingSection('Coming up this week', dueThisWeek, '', t => formatDue(t.dueDate)) +
       briefingSection('Finished yesterday', doneYesterday, 'briefing-done', () => '✓') +
-      briefingSection('Not touched in ' + STALE_DAYS + '+ days', staleShown, '', t => formatDate(t.updatedAt || t.createdAt),
-        'Worth a quick look: finish, sleep or update these.' + (stale.length > staleShown.length ? ' Showing 10 of ' + stale.length + '.' : '')) +
+      briefingSection('Needs an update', updateShown, 'briefing-update', daysAgo,
+        'Not updated for over a week, oldest first. Any change to a task counts: a note, a ticked subtask or a new date.' +
+        (needsUpdate.length > updateShown.length ? ' Showing the oldest ' + updateShown.length + ' of ' + needsUpdate.length + '.' : '')) +
       backupSection;
     const exportNow = document.getElementById('summaryExportBtn');
     if (exportNow) exportNow.addEventListener('click', () => exportAllBtn.click());
