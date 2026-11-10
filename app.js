@@ -1183,8 +1183,17 @@
           row.classList.add('grid-pending');
           const sleepCell = document.createElement('div');
           sleepCell.className = 'cell cell-sleep' + (item.snoozeUntil ? '' : ' no-timer');
-          sleepCell.textContent = item.snoozeUntil ? toUKDateShort(item.snoozeUntil) : 'No timer';
-          if (item.snoozeUntil) sleepCell.title = 'Wakes up on ' + toUKDateShort(item.snoozeUntil);
+          if (item.snoozeUntil) {
+            // "Wakes up on" labels the date wherever the column title isn't on screen (narrow windows, Sage, Pinboard)
+            const wakeLabel = document.createElement('span');
+            wakeLabel.className = 'sleep-label';
+            wakeLabel.textContent = 'Wakes up on ';
+            sleepCell.appendChild(wakeLabel);
+            sleepCell.appendChild(document.createTextNode(toUKDateShort(item.snoozeUntil)));
+            sleepCell.title = 'Wakes up on ' + toUKDateShort(item.snoozeUntil);
+          } else {
+            sleepCell.textContent = 'No timer';
+          }
           row.appendChild(sleepCell);
         }
 

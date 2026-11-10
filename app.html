@@ -10,9 +10,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<link rel="stylesheet" href="styles.css?v=12.44">
-<script src="config.js?v=12.44"></script>
-<script src="auth-gate.js?v=12.44"></script>
+<link rel="stylesheet" href="styles.css?v=12.45">
+<script src="config.js?v=12.45"></script>
+<script src="auth-gate.js?v=12.45"></script>
 </head>
 <body>
 <script>
@@ -200,7 +200,7 @@
       <span class="lh-assignee">Assigned</span>
       <span class="lh-due">Due</span>
       <span class="lh-completed" id="lhCompleted">Date Completed</span>
-      <span class="lh-sleep" id="lhSleep">Sleeping Until</span>
+      <span class="lh-sleep" id="lhSleep">Wakes up on</span>
       <span class="lh-priority">Priority</span>
     </div>
 
@@ -258,7 +258,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.44</span></h2>
+      <h2>Settings <span class="settings-version">v12.45</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -552,6 +552,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.45</span> Pending tasks with a sleep timer now say "Wakes up on" before their date, and the Pending column title reads "Wakes up on" instead of "Sleeping Until".</li>
           <li><span class="changelog-version">v12.44</span> Navy &amp; White theme on the Sage layout: the navy outline round each task card is thicker.</li>
           <li><span class="changelog-version">v12.43</span> New Settings &rarr; Daily Briefing &rarr; Task Reminder Updates switch turns the briefing's weekly "Needs an update" list on or off (on to start with).</li>
           <li><span class="changelog-version">v12.42</span> Briefing: a new "Needs an update" section lists the open To-do tasks that haven't been changed for over a week, oldest first, so every task gets looked at at least weekly. It replaces the briefing's old 14-day list. Also fixed: the first change to a task after opening the app didn't record an updated time (which syncing uses to decide which edit is newest).</li>
@@ -761,8 +762,8 @@
 
 <script>/* secret boxes are plain text boxes drawn as dots, so browsers never offer to "save a password"; a browser that cannot draw the dots gets a real password box instead */
 document.querySelectorAll("input.masked").forEach(function (i) { var s = ""; try { s = getComputedStyle(i).webkitTextSecurity || ""; } catch (e) {} if (s !== "disc") i.type = "password"; });</script>
-<script src="gh-storage.js?v=12.44"></script>
-<script src="app.js?v=12.44"></script>
+<script src="gh-storage.js?v=12.45"></script>
+<script src="app.js?v=12.45"></script>
 <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}</script>
 </body>
 </html>
