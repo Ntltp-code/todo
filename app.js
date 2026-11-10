@@ -565,6 +565,24 @@
     });
   }
 
+  // put a task to sleep until a date, then confirm it with a pop-up (with Undo)
+  function setSleepTimer(item, until) {
+    const before = { pending: item.pending, wokeUp: item.wokeUp, snoozeUntil: item.snoozeUntil };
+    item.pending = true;
+    item.wokeUp = false;
+    item.snoozeUntil = until;
+    save();
+    toggleExpanded(item.id);
+    showToast('Sleep timer set: "' + item.text + '" wakes up on ' + toUKDateShort(until) + '.', () => {
+      const t = todos.find(x => x.id === item.id);
+      if (!t) return;
+      Object.assign(t, before);
+      render();
+      save();
+      showToast('Sleep timer removed.');
+    });
+  }
+
   const confirmOverlay = document.getElementById('confirmOverlay');
   function askConfirm(message, okLabel) {
     return new Promise(resolve => {
@@ -1757,11 +1775,7 @@
               sleep1WeekBtn.className = 'sleep-toggle';
               sleep1WeekBtn.textContent = 'Sleep 1 Week';
               sleep1WeekBtn.addEventListener('click', () => {
-                item.pending = true;
-                item.wokeUp = false;
-                item.snoozeUntil = addDaysToToday(7);
-                save();
-                toggleExpanded(item.id);
+                setSleepTimer(item, addDaysToToday(7));
               });
 
               sleepUntilInput = document.createElement('input');
@@ -1771,11 +1785,7 @@
               sleepUntilInput.min = addDaysToToday(1);
               sleepUntilInput.addEventListener('change', () => {
                 if (!sleepUntilInput.value) return;
-                item.pending = true;
-                item.wokeUp = false;
-                item.snoozeUntil = sleepUntilInput.value;
-                save();
-                toggleExpanded(item.id);
+                setSleepTimer(item, sleepUntilInput.value);
               });
             }
           }
