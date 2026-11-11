@@ -523,8 +523,19 @@
   function stampUpdated() {
     const now = Date.now();
     todos.forEach(t => {
+      // note the day a task goes into Pending (whichever way it got there), and forget it when it leaves
+      const prevFp = savedFingerprints.get(t.id);
+      if (t.pending && !t.done) {
+        if (!t.pendingSince) {
+          let wasPending = false;
+          try { wasPending = !!(prevFp && JSON.parse(prevFp).pending); } catch (e) {}
+          if (!wasPending) t.pendingSince = now;
+        }
+      } else if (t.pendingSince) {
+        delete t.pendingSince;
+      }
       const fp = fingerprint(t);
-      if (savedFingerprints.has(t.id) ? savedFingerprints.get(t.id) !== fp : !t.updatedAt) t.updatedAt = now;
+      if (savedFingerprints.has(t.id) ? prevFp !== fp : !t.updatedAt) t.updatedAt = now;
       savedFingerprints.set(t.id, fp);
     });
   }
@@ -1217,6 +1228,16 @@
 
         row.appendChild(priorityTag);
         row.appendChild(stamp);
+        if (page === 'pending' && item.pendingSince) {
+          const sinceLine = document.createElement('div');
+          sinceLine.className = 'pending-since';
+          const sinceLabel = document.createElement('span');
+          sinceLabel.className = 'pending-since-label';
+          sinceLabel.textContent = 'Moved to Pending ';
+          sinceLine.appendChild(sinceLabel);
+          sinceLine.appendChild(document.createTextNode(formatDate(item.pendingSince)));
+          row.appendChild(sinceLine);
+        }
         li.appendChild(row);
 
         // a click anywhere on the row opens the task (or selects it in select mode);
