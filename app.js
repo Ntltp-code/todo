@@ -1203,12 +1203,24 @@
         const categoryTagEl = categoryCell.querySelector('.category-tag:not(.sleep-tag):not(.woke-tag)');
         if (item.category && categoryTagEl) categoryCell.insertBefore(cellTitle('Category'), categoryTagEl);
         if (assigneeCell.firstChild) assigneeCell.insertBefore(cellTitle('Assigned to'), assigneeCell.firstChild);
-        if (item.dueDate) dueCell.insertBefore(cellTitle('Due'), dueCell.firstChild);
+        // dates sit in a small box (styled like the category tag in Sage; plain text elsewhere)
+        const dateBox = text => {
+          const s = document.createElement('span');
+          s.className = 'cell-date';
+          s.textContent = text;
+          return s;
+        };
+        if (item.dueDate) {
+          const dueText = dueCell.textContent;
+          dueCell.textContent = '';
+          dueCell.appendChild(cellTitle('Due'));
+          dueCell.appendChild(dateBox(dueText));
+        }
         const updatedCell = document.createElement('div');
         updatedCell.className = 'cell cell-updated';
         if (item.updatedAt) {
           updatedCell.appendChild(cellTitle('Last updated'));
-          updatedCell.appendChild(document.createTextNode(formatDate(item.updatedAt)));
+          updatedCell.appendChild(dateBox(formatDate(item.updatedAt)));
         }
 
         row.appendChild(categoryCell);
