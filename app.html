@@ -10,9 +10,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<link rel="stylesheet" href="styles.css?v=12.52">
-<script src="config.js?v=12.52"></script>
-<script src="auth-gate.js?v=12.52"></script>
+<link rel="stylesheet" href="styles.css?v=12.53">
+<script src="config.js?v=12.53"></script>
+<script src="auth-gate.js?v=12.53"></script>
 </head>
 <body>
 <script>
@@ -102,8 +102,6 @@
       <button type="button" class="select-btn" id="selectBtn" aria-pressed="false">Select</button>
     </div>
     </div>
-
-    <div class="update-panel" id="updatePanel" hidden aria-label="Tasks that need an update"></div>
 
     <div class="quick-add">
       <button class="new-task-btn" id="newTaskBtn" type="button">+ New Task</button>
@@ -260,7 +258,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.52</span></h2>
+      <h2>Settings <span class="settings-version">v12.53</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -554,6 +552,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.53</span> The "Needs an update" list is back inside the Briefing only (removed from the main screen), and now lists every open task not updated in the last 7 days rather than just the oldest 15.</li>
           <li><span class="changelog-version">v12.52</span> A "Needs an update" panel under the Briefing button lists every open task not updated in the last 7 days (oldest first). Click a task to open it; Hide folds the panel away.</li>
           <li><span class="changelog-version">v12.51</span> When adding a subtask (in a task or in the New Task window), a "+ Due" button beside Subtask / Note lets you pick its due date before you add it.</li>
           <li><span class="changelog-version">v12.50</span> Sage layout: if a task has no category, no one assigned, no due date or no last-updated date, its card now shows N/A in a grey box instead of leaving it out.</li>
@@ -771,8 +770,8 @@
 
 <script>/* secret boxes are plain text boxes drawn as dots, so browsers never offer to "save a password"; a browser that cannot draw the dots gets a real password box instead */
 document.querySelectorAll("input.masked").forEach(function (i) { var s = ""; try { s = getComputedStyle(i).webkitTextSecurity || ""; } catch (e) {} if (s !== "disc") i.type = "password"; });</script>
-<script src="gh-storage.js?v=12.52"></script>
-<script src="app.js?v=12.52"></script>
+<script src="gh-storage.js?v=12.53"></script>
+<script src="app.js?v=12.53"></script>
 <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}</script>
 </body>
 </html>

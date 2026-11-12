@@ -74,7 +74,6 @@
   const subtaskDrafts = {};
   const addEntryTypeByItem = {};
   const subtaskDueDrafts = {};   // due date chosen for a subtask that is still being typed, per task
-  const afterRenderHooks = [];   // extra bits of the page that redraw whenever the list does
   let confirmingSubtaskDelete = new Set();
   let confirmingTaskDelete = new Set();
   let page = 'active';
@@ -1927,7 +1926,6 @@
     exportBtn.style.display = page === 'done' && completed > 0 ? 'inline' : 'none';
 
     updateSummary();
-    afterRenderHooks.forEach(fn => { try { fn(); } catch (e) { console.error(e); } });
   }
 
   function updateSummary() {
@@ -2039,11 +2037,10 @@
   taskUpdatesToggle.addEventListener('change', () => {
     taskReminderUpdatesOn = taskUpdatesToggle.checked;
     queuedStorageSet(TASK_UPDATES_KEY, taskReminderUpdatesOn ? 'on' : 'off');
-    renderUpdatePanel();
   });
 
   // open To-do tasks (not pending) that nobody has changed for over a week, oldest first.
-  // Any change counts, including adding a note or ticking a subtask. Used by the briefing and the panel below.
+  // Any change counts, including adding a note or ticking a subtask. Used by the briefing.
   const lastChanged = t => t.updatedAt || t.createdAt || 0;
   function tasksNeedingUpdate() {
     return todos.filter(t => !t.done && !t.pending && Date.now() - lastChanged(t) > 7 * 86400000)
@@ -2054,49 +2051,6 @@
     return days + ' days ago';
   };
 
-  // "Needs an update" panel under the toolbar (briefing users, while Task Reminder Updates is on).
-  // It can be folded away; that choice is remembered on this device.
-  const updatePanel = document.getElementById('updatePanel');
-  const UPDATE_PANEL_KEY = 'todo_updatepanel_' + briefingUser;
-  let updatePanelOpen = true;
-  try { updatePanelOpen = localStorage.getItem(UPDATE_PANEL_KEY) !== 'closed'; } catch (e) { /* stays open */ }
-  function renderUpdatePanel() {
-    if (!briefingOn || !taskReminderUpdatesOn) { updatePanel.hidden = true; return; }
-    const list = tasksNeedingUpdate();
-    updatePanel.hidden = false;
-    updatePanel.classList.toggle('folded', !updatePanelOpen);
-    updatePanel.innerHTML =
-      '<div class="update-panel-head">' +
-        '<span class="update-panel-title">Needs an update <span class="update-panel-count">' + list.length + '</span></span>' +
-        '<span class="update-panel-hint">Open tasks not updated in the last 7 days, oldest first</span>' +
-        '<button type="button" class="link-btn update-panel-fold" aria-expanded="' + updatePanelOpen + '">' + (updatePanelOpen ? 'Hide' : 'Show') + '</button>' +
-      '</div>' +
-      (!updatePanelOpen ? '' : list.length
-        ? '<ul class="due-summary-list update-panel-list">' + list.map(t =>
-            '<li data-id="' + escapeHtml(t.id) + '" tabindex="0" title="Open this task"><span class="due-summary-task">' + escapeHtml(t.text) + '</span>' +
-            '<span class="due-summary-date">' + escapeHtml(daysSinceChange(t)) + '</span></li>').join('') + '</ul>'
-        : '<p class="update-panel-empty">All open tasks have been updated in the last 7 days.</p>');
-  }
-  updatePanel.addEventListener('click', e => {
-    if (e.target.closest('.update-panel-fold')) {
-      updatePanelOpen = !updatePanelOpen;
-      try { localStorage.setItem(UPDATE_PANEL_KEY, updatePanelOpen ? 'open' : 'closed'); } catch (err) { /* ignore */ }
-      renderUpdatePanel();
-      return;
-    }
-    const li = e.target.closest('li[data-id]');
-    if (!li) return;
-    const t = todos.find(x => x.id === li.dataset.id);
-    if (!t) return;
-    filterMode = null;
-    setPage('active');
-    toggleExpanded(t.id);
-  });
-  updatePanel.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && e.target.matches('li[data-id]')) e.target.click();
-  });
-  afterRenderHooks.push(renderUpdatePanel);
-  renderUpdatePanel();
   // if something in the list trips the briefing up, say so on screen (instead of silently doing nothing)
   // and fall back to the usual Today pop-up
   function tryBriefing(fallback) {
@@ -2168,7 +2122,6 @@
         (encryptionOn() ? ' Your list is encrypted, so a backup is the only way back if the passphrase is forgotten.' : '') +
         ' <button type="button" class="link-btn" id="summaryExportBtn">Export now</button></p></div>'
       : '';
-    const updateShown = needsUpdate.slice(0, 15);
     const daysAgo = daysSinceChange;
 
     const body = document.getElementById('dueSummaryBody');
@@ -2182,9 +2135,8 @@
       briefingSection('★ Starred', starred, '', t => t.dueDate ? formatDue(t.dueDate) : '') +
       briefingSection('Coming up this week', dueThisWeek, '', t => formatDue(t.dueDate)) +
       briefingSection('Finished yesterday', doneYesterday, 'briefing-done', () => '✓') +
-      briefingSection('Needs an update', updateShown, 'briefing-update', daysAgo,
-        'Not updated for over a week, oldest first. Any change to a task counts: a note, a ticked subtask or a new date.' +
-        (needsUpdate.length > updateShown.length ? ' Showing the oldest ' + updateShown.length + ' of ' + needsUpdate.length + '.' : '')) +
+      briefingSection('Needs an update', needsUpdate, 'briefing-update', daysAgo,
+        'Open tasks not updated in the last 7 days, oldest first. Any change to a task counts: a note, a ticked subtask or a new date.') +
       backupSection;
     const exportNow = document.getElementById('summaryExportBtn');
     if (exportNow) exportNow.addEventListener('click', () => exportAllBtn.click());
