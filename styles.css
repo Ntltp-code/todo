@@ -3216,3 +3216,9 @@ body.layout-sage li.item .row .cell.cell-updated:empty { display:none; }
 body.layout-sage li.item .row .cell .cell-date { display:inline-block; font-size:12px; letter-spacing:0.2px; font-weight:700; padding:1px 6px; border-radius:2px; color:var(--ink-muted); border:1px solid var(--rule); background:var(--paper-dark); }
 body.layout-sage li.item.overdue-row .row .cell-due .cell-date, body.layout-sage li.item .row .created.overdue .cell-date { color:var(--overdue); }
 body.layout-sage li.item.due-today .row .cell-due .cell-date { color:var(--due); }
+
+/* v12.50 Sage: empty Category / Assigned to / Due / Last updated show "N/A"; other layouts keep them blank */
+.cell .na-box { display:none; }
+body.layout-sage li.item .row .cell .na-box { display:inline-block; }
+@media (max-width: 1000px) { body:not(.layout-sage) li.item .row .cell.cell-na:not(:has(> :not(.cell-title):not(.na-box))) { display:none; } }
+body.layout-pinboard li.item .row .cell.cell-na:not(:has(> :not(.cell-title):not(.na-box))) { display:none; }

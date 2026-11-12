@@ -1222,6 +1222,18 @@
           updatedCell.appendChild(cellTitle('Last updated'));
           updatedCell.appendChild(dateBox(formatDate(item.updatedAt)));
         }
+        // in Sage, anything not filled in shows as "N/A" (hidden in the other layouts)
+        const markNA = (cell, title) => {
+          cell.classList.add('cell-na');
+          const na = dateBox('N/A');
+          na.classList.add('na-box');
+          cell.insertBefore(na, cell.firstChild);
+          cell.insertBefore(cellTitle(title), na);
+        };
+        if (!item.category) markNA(categoryCell, 'Category');
+        if (!itemAssignees.length) markNA(assigneeCell, 'Assigned to');
+        if (!item.dueDate) markNA(dueCell, 'Due');
+        if (!item.updatedAt) markNA(updatedCell, 'Last updated');
 
         row.appendChild(categoryCell);
         row.appendChild(assigneeCell);
