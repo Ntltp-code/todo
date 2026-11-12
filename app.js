@@ -1193,9 +1193,28 @@
           summaryLine.title = summaryText;
           row.appendChild(summaryLine);
         }
+        // small titles on the card's bottom line (shown in the Sage layout only)
+        const cellTitle = text => {
+          const s = document.createElement('span');
+          s.className = 'cell-title';
+          s.textContent = text + ' ';
+          return s;
+        };
+        const categoryTagEl = categoryCell.querySelector('.category-tag:not(.sleep-tag):not(.woke-tag)');
+        if (item.category && categoryTagEl) categoryCell.insertBefore(cellTitle('Category'), categoryTagEl);
+        if (assigneeCell.firstChild) assigneeCell.insertBefore(cellTitle('Assigned to'), assigneeCell.firstChild);
+        if (item.dueDate) dueCell.insertBefore(cellTitle('Due'), dueCell.firstChild);
+        const updatedCell = document.createElement('div');
+        updatedCell.className = 'cell cell-updated';
+        if (item.updatedAt) {
+          updatedCell.appendChild(cellTitle('Last updated'));
+          updatedCell.appendChild(document.createTextNode(formatDate(item.updatedAt)));
+        }
+
         row.appendChild(categoryCell);
         row.appendChild(assigneeCell);
         row.appendChild(dueCell);
+        row.appendChild(updatedCell);
 
         if (page === 'done') {
           row.classList.add('grid-done');

@@ -3204,3 +3204,10 @@ li.item .row .pending-since .pending-since-label { font-weight:400; color:var(--
 @media (max-width: 1000px) { li.item .row .pending-since { margin-left:26px; } }
 @media (max-width: 640px) { li.item .row .pending-since { margin-left:32px; } }
 body.layout-sage li.item .row .pending-since, body.layout-pinboard li.item .row .pending-since { margin-left:28px; }
+
+/* v12.48 Sage: titles on each card's bottom line, plus "Last updated" */
+.cell .cell-title { display:none; }
+.cell.cell-updated { display:none; }
+body.layout-sage li.item .row .cell .cell-title { display:inline; font-size:11px; font-weight:400; font-style:normal; letter-spacing:0; text-transform:none; color:var(--ink-muted); margin-right:2px; }
+body.layout-sage li.item .row .cell.cell-updated { display:block; font-size:12px; color:var(--ink-muted); }
+body.layout-sage li.item .row .cell.cell-updated:empty { display:none; }

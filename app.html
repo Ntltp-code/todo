@@ -10,9 +10,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<link rel="stylesheet" href="styles.css?v=12.47">
-<script src="config.js?v=12.47"></script>
-<script src="auth-gate.js?v=12.47"></script>
+<link rel="stylesheet" href="styles.css?v=12.48">
+<script src="config.js?v=12.48"></script>
+<script src="auth-gate.js?v=12.48"></script>
 </head>
 <body>
 <script>
@@ -258,7 +258,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.47</span></h2>
+      <h2>Settings <span class="settings-version">v12.48</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -552,6 +552,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.48</span> Sage layout: the bottom line of each task card now has titles (Category, Assigned to, Due) and a new Last updated date.</li>
           <li><span class="changelog-version">v12.47</span> Tasks on the Pending page now show "Moved to Pending" and the date they went into Pending, under the task title.</li>
           <li><span class="changelog-version">v12.46</span> Setting a sleep timer (Sleep 1 Week or a chosen date) now shows a pop-up confirming when the task wakes up, with an Undo button.</li>
           <li><span class="changelog-version">v12.45</span> Pending tasks with a sleep timer now say "Wakes up on" before their date, and the Pending column title reads "Wakes up on" instead of "Sleeping Until".</li>
@@ -764,8 +765,8 @@
 
 <script>/* secret boxes are plain text boxes drawn as dots, so browsers never offer to "save a password"; a browser that cannot draw the dots gets a real password box instead */
 document.querySelectorAll("input.masked").forEach(function (i) { var s = ""; try { s = getComputedStyle(i).webkitTextSecurity || ""; } catch (e) {} if (s !== "disc") i.type = "password"; });</script>
-<script src="gh-storage.js?v=12.47"></script>
-<script src="app.js?v=12.47"></script>
+<script src="gh-storage.js?v=12.48"></script>
+<script src="app.js?v=12.48"></script>
 <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}</script>
 </body>
 </html>
