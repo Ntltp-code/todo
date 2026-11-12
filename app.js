@@ -73,6 +73,7 @@
   let expandedIds = new Set();
   const subtaskDrafts = {};
   const addEntryTypeByItem = {};
+  const subtaskDueDrafts = {};   // due date chosen for a subtask that is still being typed, per task
   let confirmingSubtaskDelete = new Set();
   let confirmingTaskDelete = new Set();
   let page = 'active';
@@ -1679,19 +1680,27 @@
           noteTypeBtn.className = 'entry-type-btn' + (currentEntryType === 'note' ? ' selected' : '');
           noteTypeBtn.textContent = 'Note';
 
+          // the due date for the subtask being typed (kept per task while the window re-draws)
+          const draftDue = subtaskDueDrafts[item.id] || (subtaskDueDrafts[item.id] = { dueDate: null });
+          const draftDueWrap = buildDraftDue(draftDue);
+          draftDueWrap.hidden = currentEntryType === 'note';
+
           subtaskTypeBtn.addEventListener('click', () => {
             addEntryTypeByItem[item.id] = 'subtask';
             subtaskTypeBtn.classList.add('selected');
             noteTypeBtn.classList.remove('selected');
+            draftDueWrap.hidden = false;
           });
           noteTypeBtn.addEventListener('click', () => {
             addEntryTypeByItem[item.id] = 'note';
             noteTypeBtn.classList.add('selected');
             subtaskTypeBtn.classList.remove('selected');
+            draftDueWrap.hidden = true;
           });
 
           entryTypeRow.appendChild(subtaskTypeBtn);
           entryTypeRow.appendChild(noteTypeBtn);
+          entryTypeRow.appendChild(draftDueWrap);
 
           const addSubtaskInput = document.createElement('textarea');
           addSubtaskInput.placeholder = 'Add a subtask or note... (Enter to add, Shift+Enter for a new line, or Save)';
@@ -1712,7 +1721,9 @@
             const value = addSubtaskInput.value.trim();
             if (!value) return;
             const entryType = addEntryTypeByItem[item.id] || 'subtask';
-            item.subtasks.push({ id: uid(), text: value, done: false, type: entryType, createdAt: Date.now() });
+            const entry = { id: uid(), text: value, done: false, type: entryType, createdAt: Date.now() };
+            takeDraftDue(draftDue, entry, draftDueWrap);
+            item.subtasks.push(entry);
             addSubtaskInput.value = '';
             delete subtaskDrafts[item.id];
             save();
@@ -1765,7 +1776,9 @@
             const pendingSubtask = addSubtaskInput.value.trim();
             if (pendingSubtask) {
               const entryType = addEntryTypeByItem[item.id] || 'subtask';
-              item.subtasks.push({ id: uid(), text: pendingSubtask, done: false, type: entryType, createdAt: Date.now() });
+              const entry = { id: uid(), text: pendingSubtask, done: false, type: entryType, createdAt: Date.now() };
+              takeDraftDue(draftDue, entry, draftDueWrap);
+              item.subtasks.push(entry);
               addSubtaskInput.value = '';
               delete subtaskDrafts[item.id];
             }
@@ -2537,6 +2550,7 @@
     newEntryType = type;
     newEntrySubtaskBtn.classList.toggle('selected', type === 'subtask');
     newEntryNoteBtn.classList.toggle('selected', type === 'note');
+    newEntryDueWrap.hidden = type === 'note';
   }
 
   // a subtask's own due date: a small chip ("+ Due", "Due tomorrow", "Overdue 2 days") with a date box
@@ -2571,6 +2585,31 @@
     chip.appendChild(box);
     return chip;
   }
+
+  // a "+ Due" chip beside the Subtask / Note buttons, so a subtask can get its due date before it's added.
+  // draft is { dueDate }; the chip repaints itself when the date changes, and hides while Note is chosen.
+  function buildDraftDue(draft) {
+    const wrap = document.createElement('span');
+    wrap.className = 'draft-due';
+    const paint = () => {
+      wrap.textContent = '';
+      const chip = buildSubtaskDue(draft, paint);
+      chip.title = draft.dueDate ? 'Due date for the subtask you are adding (click to change or clear)' : 'Give the subtask you are adding a due date';
+      wrap.appendChild(chip);
+    };
+    paint();
+    wrap.repaint = paint;
+    return wrap;
+  }
+  // gives a newly added subtask the chosen date, then clears the chip for the next one
+  function takeDraftDue(draft, entry, wrap) {
+    if (entry.type !== 'note' && draft.dueDate) entry.dueDate = draft.dueDate;
+    draft.dueDate = null;
+    if (wrap) wrap.repaint();
+  }
+  const newEntryDraftDue = { dueDate: null };
+  const newEntryDueWrap = buildDraftDue(newEntryDraftDue);
+  newEntryNoteBtn.parentNode.appendChild(newEntryDueWrap);
 
   function renderNewEntries() {
     newEntryList.innerHTML = '';
@@ -2666,7 +2705,9 @@
   function addNewEntry() {
     const value = newEntryInput.value.trim();
     if (!value) return;
-    newTaskEntries.push({ id: uid(), text: value, done: false, type: newEntryType, createdAt: Date.now() });
+    const entry = { id: uid(), text: value, done: false, type: newEntryType, createdAt: Date.now() };
+    takeDraftDue(newEntryDraftDue, entry, newEntryDueWrap);
+    newTaskEntries.push(entry);
     newEntryInput.value = '';
     renderNewEntries();
   }
@@ -2674,6 +2715,8 @@
   function resetNewEntries() {
     newTaskEntries = [];
     newEntryInput.value = '';
+    newEntryDraftDue.dueDate = null;
+    newEntryDueWrap.repaint();
     setNewEntryType('subtask');
     renderNewEntries();
   }

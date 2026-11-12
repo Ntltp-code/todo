@@ -3222,3 +3222,8 @@ body.layout-sage li.item.due-today .row .cell-due .cell-date { color:var(--due);
 body.layout-sage li.item .row .cell .na-box { display:inline-block; }
 @media (max-width: 1000px) { body:not(.layout-sage) li.item .row .cell.cell-na:not(:has(> :not(.cell-title):not(.na-box))) { display:none; } }
 body.layout-pinboard li.item .row .cell.cell-na:not(:has(> :not(.cell-title):not(.na-box))) { display:none; }
+
+/* v12.51 "+ Due" chip beside Subtask / Note, so a subtask gets its date as it's added */
+.entry-type-row { align-items:center; }
+.entry-type-row .draft-due { display:inline-flex; margin-left:4px; }
+.entry-type-row .draft-due[hidden] { display:none; }
