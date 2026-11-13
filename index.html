@@ -83,10 +83,10 @@ input.masked{-webkit-text-security:disc}
   <div class="row"><button class="link" id="pinChange" type="button" hidden>Change PIN</button><button class="sec" id="pinCancel" type="button">Cancel</button><button class="pri" id="pinOk" type="button" style="margin:0">Continue</button></div>
 </dialog>
 
-<script src="config.js?v=12.54"></script>
+<script src="config.js?v=12.55"></script>
 <script>/* secret boxes are plain text boxes drawn as dots, so browsers never offer to "save a password"; a browser that cannot draw the dots gets a real password box instead */
 document.querySelectorAll("input.masked").forEach(function (i) { var s = ""; try { s = getComputedStyle(i).webkitTextSecurity || ""; } catch (e) {} if (s !== "disc") i.type = "password"; });</script>
-<script src="gh-storage.js?v=12.54"></script>
+<script src="gh-storage.js?v=12.55"></script>
 <script>
 (function () {
   var USERS = TODO_CONFIG.users;

@@ -1855,15 +1855,23 @@
                 setSleepTimer(item, addDaysToToday(7));
               });
 
-              sleepUntilInput = document.createElement('input');
-              sleepUntilInput.type = 'date';
-              sleepUntilInput.className = 'sleep-until-input';
+              // a labelled "Sleep until…" button with the date box laid invisibly over it: an empty date box
+              // shows no text at all on iPad, so it looked blank there
+              sleepUntilInput = document.createElement('label');
+              sleepUntilInput.className = 'sleep-until-input sleep-until-btn';
               sleepUntilInput.title = 'Sleep until a chosen date';
-              sleepUntilInput.min = addDaysToToday(1);
-              sleepUntilInput.addEventListener('change', () => {
-                if (!sleepUntilInput.value) return;
-                setSleepTimer(item, sleepUntilInput.value);
+              const sleepUntilText = document.createElement('span');
+              sleepUntilText.textContent = 'Sleep until…';
+              const sleepUntilBox = document.createElement('input');
+              sleepUntilBox.type = 'date';
+              sleepUntilBox.min = addDaysToToday(1);
+              sleepUntilBox.setAttribute('aria-label', 'Sleep until a chosen date');
+              sleepUntilBox.addEventListener('change', () => {
+                if (!sleepUntilBox.value) return;
+                setSleepTimer(item, sleepUntilBox.value);
               });
+              sleepUntilInput.appendChild(sleepUntilText);
+              sleepUntilInput.appendChild(sleepUntilBox);
             }
           }
 
@@ -3539,8 +3547,13 @@
   });
 
   // a click anywhere in a date box opens the calendar, not just a click on its small icon
+  // Mouse only: on touch screens (iPad, phones) a tap already opens the calendar, and calling showPicker
+  // again straight after shut it again on iPad.
+  let lastPointerType = 'mouse';
+  document.addEventListener('pointerdown', e => { lastPointerType = e.pointerType || 'mouse'; }, true);
   document.addEventListener('click', e => {
     const el = e.target;
+    if (lastPointerType !== 'mouse') return;
     if (!(el instanceof HTMLInputElement) || (el.type !== 'date' && el.type !== 'datetime-local') || el.disabled || typeof el.showPicker !== 'function') return;
     try { el.showPicker(); } catch (err) { /* already open, or not allowed here: the browser's own behaviour applies */ }
   });

@@ -3228,3 +3228,8 @@ body.layout-pinboard li.item .row .cell.cell-na:not(:has(> :not(.cell-title):not
 .entry-type-row .draft-due { display:inline-flex; margin-left:4px; }
 .entry-type-row .draft-due[hidden] { display:none; }
 
+
+/* v12.55 "Sleep until…" button with the date box laid invisibly over it (an empty date box is blank on iPad) */
+.notes-footer .sleep-until-btn { position:relative; overflow:hidden; text-transform:uppercase; }
+.notes-footer .sleep-until-btn:hover { background:var(--accent-blue); color:var(--paper); }
+.notes-footer .sleep-until-btn input[type="date"] { position:absolute; inset:0; width:100%; height:100%; margin:0; padding:0; border:0; opacity:0; cursor:pointer; font-size:16px; }
