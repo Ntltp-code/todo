@@ -74,6 +74,23 @@
   const subtaskDrafts = {};
   const addEntryTypeByItem = {};
   const subtaskDueDrafts = {};   // due date chosen for a subtask that is still being typed, per task
+  let lastPointerType = 'mouse'; // 'mouse', 'touch' or 'pen': how the last press was made (set further down)
+
+  // Runs cb(value) once a date has really been chosen in a date box. With a mouse that's the moment it changes.
+  // On a touch screen (iPad) the box fills itself with today's date as soon as its calendar opens and reports
+  // that as a change, so wait until the calendar is closed (the box loses focus) and take the date then.
+  function whenDatePicked(box, cb) {
+    let waiting = false;
+    box.addEventListener('change', () => {
+      if (lastPointerType === 'mouse') { cb(box.value); return; }
+      waiting = true;
+    });
+    box.addEventListener('blur', () => {
+      if (!waiting) return;
+      waiting = false;
+      cb(box.value);
+    });
+  }
   let confirmingSubtaskDelete = new Set();
   let confirmingTaskDelete = new Set();
   let page = 'active';
@@ -1866,9 +1883,10 @@
               sleepUntilBox.type = 'date';
               sleepUntilBox.min = addDaysToToday(1);
               sleepUntilBox.setAttribute('aria-label', 'Sleep until a chosen date');
-              sleepUntilBox.addEventListener('change', () => {
-                if (!sleepUntilBox.value) return;
-                setSleepTimer(item, sleepUntilBox.value);
+              whenDatePicked(sleepUntilBox, value => {
+                // only a day after today makes sense (iPad fills in today by itself when the calendar opens)
+                if (!value || value < sleepUntilBox.min) { sleepUntilBox.value = ''; return; }
+                setSleepTimer(item, value);
               });
               sleepUntilInput.appendChild(sleepUntilText);
               sleepUntilInput.appendChild(sleepUntilBox);
@@ -2591,8 +2609,9 @@
     box.value = sub.dueDate || '';
     box.title = sub.dueDate ? 'Change or clear this subtask\'s due date' : 'Give this subtask a due date';
     box.setAttribute('aria-label', 'Subtask due date');
-    box.addEventListener('change', () => {
-      sub.dueDate = box.value || null;
+    whenDatePicked(box, value => {
+      if ((value || null) === (sub.dueDate || null)) return;
+      sub.dueDate = value || null;
       onChange();
     });
     chip.appendChild(label);
@@ -3549,7 +3568,6 @@
   // a click anywhere in a date box opens the calendar, not just a click on its small icon
   // Mouse only: on touch screens (iPad, phones) a tap already opens the calendar, and calling showPicker
   // again straight after shut it again on iPad.
-  let lastPointerType = 'mouse';
   document.addEventListener('pointerdown', e => { lastPointerType = e.pointerType || 'mouse'; }, true);
   document.addEventListener('click', e => {
     const el = e.target;
