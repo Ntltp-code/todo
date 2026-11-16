@@ -13,5 +13,5 @@ window.TODO_CONFIG = {
   // who gets the Email button in the task window (add more ids to give it to others)
   emailTaskUsers: ['nick'],
   // who gets B / I / bullet formatting in subtasks and notes, plus UK English spell check (add more ids to give it to others)
-  richNotesUsers: ['nick']
+  richNotesUsers: ['nick', 'jonny', 'oj']
 };
