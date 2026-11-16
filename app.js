@@ -166,10 +166,10 @@
       });
     return bar;
   }
-  // spell check in UK English for every typing box
+  // spell check on for a typing box. No language is forced: the browser uses the spell-check languages chosen
+  // in its own settings (forcing en-GB left boxes with no dictionary at all where UK English isn't installed).
   function enableSpellcheck(box) {
     box.spellcheck = true;
-    box.lang = 'en-GB';
   }
 
   // Runs cb(value) once a date has really been chosen in a date box. With a mouse that's the moment it changes.
@@ -3695,15 +3695,18 @@
     try { el.showPicker(); } catch (err) { /* already open, or not allowed here: the browser's own behaviour applies */ }
   });
 
-  // UK English spell check in every typing box (task name, summary, subtasks, notes...), never in password boxes
+  // spell check in every typing box (task name, summary, subtasks, notes...), never in password boxes.
+  // Switched on when a box is first made or shown, not at the moment it's clicked, so the first word is checked too.
   if (richNotesOn) {
-    document.documentElement.lang = 'en-GB';
-    document.addEventListener('focusin', e => {
-      const el = e.target;
-      const typing = el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && (el.type === 'text' || el.type === 'search'));
-      if (!typing || el.classList.contains('masked') || el.classList.contains('password-input')) return;
-      if (!el.spellcheck || el.lang !== 'en-GB') enableSpellcheck(el);
-    });
+    const isTypingBox = el => (el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && (el.type === 'text' || el.type === 'search'))) &&
+      !el.classList.contains('masked') && !el.classList.contains('password-input');
+    const spellcheckAll = root => {
+      if (isTypingBox(root)) root.spellcheck = true;
+      if (root.querySelectorAll) root.querySelectorAll('textarea, input[type="text"], input[type="search"]').forEach(el => { if (isTypingBox(el)) el.spellcheck = true; });
+    };
+    spellcheckAll(document.body);
+    new MutationObserver(list => list.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1) spellcheckAll(n); })))
+      .observe(document.body, { childList: true, subtree: true });
   }
 
   let lastOutsideFocus = null;
