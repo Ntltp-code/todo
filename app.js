@@ -76,6 +76,102 @@
   const subtaskDueDrafts = {};   // due date chosen for a subtask that is still being typed, per task
   let lastPointerType = 'mouse'; // 'mouse', 'touch' or 'pen': how the last press was made (set further down)
 
+  // ---------- simple formatting for subtasks and notes (users listed in config.js richNotesUsers) ----------
+  // Stored as plain text with light markers: **bold**, *italic*, and "- " at the start of a line for a bullet.
+  // Shown formatted; web links become clickable. Plain text keeps sync, encryption, CSV and email unchanged.
+  const richNotesOn = ((window.TODO_CONFIG && TODO_CONFIG.richNotesUsers) || [])
+    .includes((new URLSearchParams(location.search).get('u') || '').toLowerCase());
+
+  function inlineFormat(escaped) {
+    return escaped
+      .replace(/\*\*(?=\S)([\s\S]*?\S)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|[^*\w])\*(?=\S)([^*]*?\S)\*(?!\w)/g, '$1<em>$2</em>')
+      .replace(/\bhttps?:\/\/[^\s<]+[^\s<.,;:!?)\]'"]/g, url => '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + '</a>');
+  }
+  // text -> safe HTML (everything is escaped first, then only these few tags are added)
+  function formatNoteHtml(text) {
+    const lines = escapeHtml(String(text || '')).split('\n');
+    let html = '', inList = false;
+    lines.forEach((line, i) => {
+      const bullet = /^\s*[-•]\s+(.*)$/.exec(line);
+      if (bullet) {
+        if (!inList) { html += '<ul class="note-bullets">'; inList = true; }
+        html += '<li>' + inlineFormat(bullet[1]) + '</li>';
+        return;
+      }
+      if (inList) { html += '</ul>'; inList = false; }
+      html += inlineFormat(line) + (i < lines.length - 1 ? '<br>' : '');
+    });
+    if (inList) html += '</ul>';
+    return html;
+  }
+  // the same text without the bold / italic markers, for emails and calendar invites
+  function plainNoteText(text) {
+    return String(text || '').replace(/\*\*(?=\S)([\s\S]*?\S)\*\*/g, '$1').replace(/(^|[^*\w])\*(?=\S)([^*]*?\S)\*(?!\w)/g, '$1$2');
+  }
+  // fills a subtask/note line: formatted for richNotes users, plain text for everyone else
+  function setNoteContent(el, text) {
+    if (richNotesOn) el.innerHTML = formatNoteHtml(text);
+    else el.textContent = text;
+  }
+
+  // wrap the selected words in a marker (or drop an empty pair at the cursor)
+  function wrapSelection(box, marker) {
+    const s = box.selectionStart, e = box.selectionEnd, v = box.value;
+    const picked = v.slice(s, e);
+    const lead = picked.match(/^\s*/)[0], trail = picked.match(/\s*$/)[0];
+    const core = picked.slice(lead.length, picked.length - trail.length);
+    box.value = v.slice(0, s) + lead + marker + core + marker + trail + v.slice(e);
+    const start = s + lead.length + marker.length;
+    box.setSelectionRange(start, start + core.length);
+  }
+  // put "- " in front of each selected line (or take it off if they all have one)
+  function toggleBullets(box) {
+    const v = box.value;
+    const from = v.lastIndexOf('\n', box.selectionStart - 1) + 1;
+    let to = v.indexOf('\n', box.selectionEnd);
+    if (to === -1) to = v.length;
+    const lines = v.slice(from, to).split('\n');
+    const allBulleted = lines.every(l => /^\s*[-•]\s+/.test(l));
+    const changed = lines.map(l => allBulleted ? l.replace(/^\s*[-•]\s+/, '') : '- ' + l).join('\n');
+    box.value = v.slice(0, from) + changed + v.slice(to);
+    // keep those lines selected (a single line just gets the cursor at its end), so a second press undoes it
+    if (lines.length > 1) box.setSelectionRange(from, from + changed.length);
+    else box.setSelectionRange(from + changed.length, from + changed.length);
+  }
+  // B / I / • buttons for a typing box. Pressing them keeps the box focused, so an open edit isn't saved early.
+  function buildFormatBar(box) {
+    const bar = document.createElement('div');
+    bar.className = 'format-bar';
+    [['B', 'Bold (select words first)', () => wrapSelection(box, '**'), 'fmt-bold'],
+     ['I', 'Italic (select words first)', () => wrapSelection(box, '*'), 'fmt-italic'],
+     ['• List', 'Bullet points (one per line; Shift+Enter for a new line)', () => toggleBullets(box), 'fmt-list']]
+      .forEach(([label, title, act, cls]) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'format-btn ' + cls;
+        b.textContent = label;
+        b.title = title;
+        b.setAttribute('aria-label', title);
+        b.addEventListener('pointerdown', e => e.preventDefault());
+        b.addEventListener('mousedown', e => e.preventDefault());
+        b.addEventListener('click', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          box.focus();
+          act();
+          box.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        bar.appendChild(b);
+      });
+    return bar;
+  }
+  // spell check in UK English for every typing box
+  function enableSpellcheck(box) {
+    box.spellcheck = true;
+    box.lang = 'en-GB';
+  }
+
   // Runs cb(value) once a date has really been chosen in a date box. With a mouse that's the moment it changes.
   // On a touch screen (iPad) the box fills itself with today's date as soon as its calendar opens and reports
   // that as a change, so wait until the calendar is closed (the box loses focus) and take the date then.
@@ -1587,15 +1683,25 @@
 
             const subText = document.createElement('div');
             subText.className = 'subtask-text';
-            subText.textContent = sub.text;
+            setNoteContent(subText, sub.text);
             subText.title = 'Click to edit';
-            subText.addEventListener('click', () => {
+            subText.addEventListener('click', e => {
+              if (e.target.closest('a')) return;   // a link opens the page, not the editor
               const editInput = document.createElement('textarea');
               editInput.className = 'subtask-edit-input';
               editInput.maxLength = 5000;
               editInput.rows = 3;
               editInput.value = sub.text;
-              subRow.replaceChild(editInput, subText);
+              enableSpellcheck(editInput);
+              if (richNotesOn) {
+                const editWrap = document.createElement('div');
+                editWrap.className = 'subtask-edit-wrap';
+                editWrap.appendChild(buildFormatBar(editInput));
+                editWrap.appendChild(editInput);
+                subRow.replaceChild(editWrap, subText);
+              } else {
+                subRow.replaceChild(editInput, subText);
+              }
               editInput.focus();
               editInput.select();
 
@@ -1754,6 +1860,8 @@
             }
           });
 
+          enableSpellcheck(addSubtaskInput);
+          if (richNotesOn) entryTypeRow.appendChild(buildFormatBar(addSubtaskInput));
           addSubtaskRow.appendChild(entryTypeRow);
           addSubtaskRow.appendChild(addSubtaskInput);
 
@@ -2272,12 +2380,12 @@
     const notes = (t.subtasks || []).filter(s => s.type === 'note');
     if (subs.length) {
       lines.push('', 'Subtasks (' + subs.filter(s => s.done).length + ' of ' + subs.length + ' done):');
-      subs.forEach(s => lines.push((s.done ? '[x] ' : '[ ] ') + String(s.text || '') +
+      subs.forEach(s => lines.push((s.done ? '[x] ' : '[ ] ') + plainNoteText(s.text) +
         (s.dueDate ? ' (due ' + formatDate(s.dueDate) + (subtaskDueState(s) === 'overdue' ? ', overdue' : '') + ')' : '')));
     }
     if (notes.length) {
       lines.push('', 'Notes:');
-      notes.forEach(s => lines.push('- ' + String(s.text || '') + (s.createdAt ? ' (' + formatDate(s.createdAt) + ')' : '')));
+      notes.forEach(s => lines.push('- ' + plainNoteText(s.text) + (s.createdAt ? ' (' + formatDate(s.createdAt) + ')' : '')));
     }
     return { subject: 'Task: ' + name, body: lines.join('\n') };
   }
@@ -2643,6 +2751,7 @@
   const newEntryDraftDue = { dueDate: null };
   const newEntryDueWrap = buildDraftDue(newEntryDraftDue);
   newEntryNoteBtn.parentNode.appendChild(newEntryDueWrap);
+  if (richNotesOn) newEntryNoteBtn.parentNode.appendChild(buildFormatBar(newEntryInput));
 
   function renderNewEntries() {
     newEntryList.innerHTML = '';
@@ -2672,15 +2781,25 @@
 
       const subText = document.createElement('div');
       subText.className = 'subtask-text';
-      subText.textContent = sub.text;
+      setNoteContent(subText, sub.text);
       subText.title = 'Click to edit';
-      subText.addEventListener('click', () => {
+      subText.addEventListener('click', e => {
+        if (e.target.closest('a')) return;   // a link opens the page, not the editor
         const editInput = document.createElement('textarea');
         editInput.className = 'subtask-edit-input';
         editInput.maxLength = 5000;
         editInput.rows = 3;
         editInput.value = sub.text;
-        subRow.replaceChild(editInput, subText);
+        enableSpellcheck(editInput);
+        if (richNotesOn) {
+          const editWrap = document.createElement('div');
+          editWrap.className = 'subtask-edit-wrap';
+          editWrap.appendChild(buildFormatBar(editInput));
+          editWrap.appendChild(editInput);
+          subRow.replaceChild(editWrap, subText);
+        } else {
+          subRow.replaceChild(editInput, subText);
+        }
         editInput.focus();
         editInput.select();
         editInput.addEventListener('blur', () => {
@@ -3575,6 +3694,17 @@
     if (!(el instanceof HTMLInputElement) || (el.type !== 'date' && el.type !== 'datetime-local') || el.disabled || typeof el.showPicker !== 'function') return;
     try { el.showPicker(); } catch (err) { /* already open, or not allowed here: the browser's own behaviour applies */ }
   });
+
+  // UK English spell check in every typing box (task name, summary, subtasks, notes...), never in password boxes
+  if (richNotesOn) {
+    document.documentElement.lang = 'en-GB';
+    document.addEventListener('focusin', e => {
+      const el = e.target;
+      const typing = el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && (el.type === 'text' || el.type === 'search'));
+      if (!typing || el.classList.contains('masked') || el.classList.contains('password-input')) return;
+      if (!el.spellcheck || el.lang !== 'en-GB') enableSpellcheck(el);
+    });
+  }
 
   let lastOutsideFocus = null;
   document.addEventListener('focusin', e => {

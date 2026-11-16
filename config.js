@@ -11,5 +11,7 @@ window.TODO_CONFIG = {
   // who gets the daily briefing in place of the first Today pop-up of the day (add more ids to give it to others)
   briefingUsers: ['nick'],
   // who gets the Email button in the task window (add more ids to give it to others)
-  emailTaskUsers: ['nick']
+  emailTaskUsers: ['nick'],
+  // who gets B / I / bullet formatting in subtasks and notes, plus UK English spell check (add more ids to give it to others)
+  richNotesUsers: ['nick']
 };
