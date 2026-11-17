@@ -10,9 +10,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<link rel="stylesheet" href="styles.css?v=12.64">
-<script src="config.js?v=12.64"></script>
-<script src="auth-gate.js?v=12.64"></script>
+<link rel="stylesheet" href="styles.css?v=12.65">
+<script src="config.js?v=12.65"></script>
+<script src="auth-gate.js?v=12.65"></script>
 </head>
 <body>
 <script>
@@ -162,7 +162,8 @@
                 <button type="button" class="entry-type-btn selected" id="newEntrySubtaskBtn">Subtask</button>
                 <button type="button" class="entry-type-btn" id="newEntryNoteBtn">Note</button>
               </div>
-              <textarea id="newEntryInput" class="add-subtask-input" maxlength="5000" rows="3" aria-label="Add a subtask or note" placeholder="Add a subtask or note... (Enter to add, Shift+Enter for a new line)"></textarea>
+              <textarea id="newEntryInput" class="add-subtask-input" maxlength="5000" rows="3" aria-label="Add a subtask or note" placeholder="Add a subtask or note... (Enter for a new line; press Add, or Ctrl+Enter, to add it)"></textarea>
+              <button type="button" class="add-entry-btn" id="newEntryAddBtn" title="Add this subtask or note (Ctrl+Enter)">+ Add</button>
             </div>
           </div>
           <div class="add-btn-row">
@@ -259,7 +260,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.64</span></h2>
+      <h2>Settings <span class="settings-version">v12.65</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -553,6 +554,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.65</span> Subtask and note boxes now work like the Notepad: Enter starts a new line. Press the new + Add button (or Ctrl+Enter) to add the entry; Save and the New Task window's Add still keep anything typed.</li>
           <li><span class="changelog-version">v12.64</span> The Notepad opens bigger and can be resized: drag its right edge, bottom edge or corner (double-click the corner to reset). Each device remembers the size.</li>
           <li><span class="changelog-version">v12.63</span> The Notepad now holds up to 250,000 characters (was 100,000).</li>
           <li><span class="changelog-version">v12.62</span> The Notepad now holds up to 100,000 characters (was 20,000).</li>
@@ -803,8 +805,8 @@
 
 <script>/* secret boxes are plain text boxes drawn as dots, so browsers never offer to "save a password"; a browser that cannot draw the dots gets a real password box instead */
 document.querySelectorAll("input.masked").forEach(function (i) { var s = ""; try { s = getComputedStyle(i).webkitTextSecurity || ""; } catch (e) {} if (s !== "disc") i.type = "password"; });</script>
-<script src="gh-storage.js?v=12.64"></script>
-<script src="app.js?v=12.64"></script>
+<script src="gh-storage.js?v=12.65"></script>
+<script src="app.js?v=12.65"></script>
 <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}</script>
 </body>
 </html>

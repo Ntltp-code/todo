@@ -145,7 +145,7 @@
     bar.className = 'format-bar';
     [['B', 'Bold (select words first)', () => wrapSelection(box, '**'), 'fmt-bold'],
      ['I', 'Italic (select words first)', () => wrapSelection(box, '*'), 'fmt-italic'],
-     ['• List', 'Bullet points (one per line; Shift+Enter for a new line)', () => toggleBullets(box), 'fmt-list']]
+     ['• List', 'Bullet points (one per line)', () => toggleBullets(box), 'fmt-list']]
       .forEach(([label, title, act, cls]) => {
         const b = document.createElement('button');
         b.type = 'button';
@@ -1714,7 +1714,7 @@
               };
               editInput.addEventListener('blur', commit);
               editInput.addEventListener('keydown', e => {
-                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); editInput.blur(); }
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); editInput.blur(); }
                 if (e.key === 'Escape') { e.stopPropagation(); editInput.value = sub.text; editInput.blur(); }
               });
             });
@@ -1827,7 +1827,7 @@
           entryTypeRow.appendChild(draftDueWrap);
 
           const addSubtaskInput = document.createElement('textarea');
-          addSubtaskInput.placeholder = 'Add a subtask or note... (Enter to add, Shift+Enter for a new line, or Save)';
+          addSubtaskInput.placeholder = 'Add a subtask or note... (Enter for a new line; press Add, or Ctrl+Enter, to add it)';
           addSubtaskInput.className = 'add-subtask-input';
           addSubtaskInput.maxLength = 5000;
           addSubtaskInput.rows = 4;
@@ -1855,7 +1855,7 @@
           };
 
           addSubtaskInput.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
               e.preventDefault();
               addSubtask();
             }
@@ -1865,6 +1865,14 @@
           if (richNotesOn) entryTypeRow.appendChild(buildFormatBar(addSubtaskInput));
           addSubtaskRow.appendChild(entryTypeRow);
           addSubtaskRow.appendChild(addSubtaskInput);
+          // Enter makes a new line, so adding is a button (or Ctrl+Enter)
+          const addEntryBtn = document.createElement('button');
+          addEntryBtn.type = 'button';
+          addEntryBtn.className = 'add-entry-btn';
+          addEntryBtn.textContent = '+ Add';
+          addEntryBtn.title = 'Add this subtask or note (Ctrl+Enter)';
+          addEntryBtn.addEventListener('click', addSubtask);
+          addSubtaskRow.appendChild(addEntryBtn);
 
           const panelFooter = document.createElement('div');
           panelFooter.className = 'notes-footer';
@@ -2812,7 +2820,7 @@
           renderNewEntries();
         });
         editInput.addEventListener('keydown', e => {
-          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); editInput.blur(); }
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); editInput.blur(); }
           if (e.key === 'Escape') { e.stopPropagation(); editInput.value = sub.text; editInput.blur(); }
         });
       });
@@ -2877,10 +2885,11 @@
     renderNewEntries();
   }
 
+  document.getElementById('newEntryAddBtn').addEventListener('click', () => { addNewEntry(); newEntryInput.focus(); });
   newEntrySubtaskBtn.addEventListener('click', () => setNewEntryType('subtask'));
   newEntryNoteBtn.addEventListener('click', () => setNewEntryType('note'));
   newEntryInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       addNewEntry();
     }

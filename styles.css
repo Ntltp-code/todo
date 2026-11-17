@@ -3333,3 +3333,7 @@ body.layout-sage .notepad-link { position:static; order:5; align-self:flex-end; 
   .notepad-body .notepad-view, .notepad-body .notepad-input { flex:1 1 0; height:auto; }
   .modal.notepad-modal.sized { width:100% !important; height:86dvh !important; }
 }
+
+/* v12.65 Enter makes a new line in subtask / note boxes; "+ Add" (or Ctrl+Enter) adds the entry */
+.add-entry-btn { display:inline-flex; align-items:center; justify-content:center; align-self:flex-end; height:30px; padding:0 16px; border:1px solid var(--accent-blue); border-radius:6px; background:none; color:var(--accent-blue); font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+.add-entry-btn:hover { background:var(--accent-blue); color:var(--paper); }
