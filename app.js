@@ -692,7 +692,10 @@
   }
 
   // put a task to sleep until a date, then confirm it with a pop-up (with Undo)
-  function setSleepTimer(item, until) {
+  async function setSleepTimer(item, until) {
+    // ask first: sleeping hides the task in Pending until that day
+    if (!(await askConfirm('Put "' + item.text + '" to sleep until ' + toUKDateShort(until) + '? It will move to Pending and wake up on that day.', 'Sleep'))) return false;
+    if (item.done) return false;
     const before = { pending: item.pending, wokeUp: item.wokeUp, snoozeUntil: item.snoozeUntil };
     item.pending = true;
     item.wokeUp = false;
@@ -707,6 +710,7 @@
       save();
       showToast('Sleep timer removed.');
     });
+    return true;
   }
 
   const confirmOverlay = document.getElementById('confirmOverlay');
@@ -2014,7 +2018,7 @@
               whenDatePicked(sleepUntilBox, value => {
                 // only a day after today makes sense (iPad fills in today by itself when the calendar opens)
                 if (!value || value < sleepUntilBox.min) { sleepUntilBox.value = ''; return; }
-                setSleepTimer(item, value);
+                setSleepTimer(item, value).then(ok => { if (!ok) sleepUntilBox.value = ''; });
               });
               sleepUntilInput.appendChild(sleepUntilText);
               sleepUntilInput.appendChild(sleepUntilBox);
