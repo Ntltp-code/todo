@@ -3322,3 +3322,14 @@ body.layout-sage .notepad-link { position:static; order:5; align-self:flex-end; 
 /* Notepad sizing: the page shrinks on small screens instead of running over the buttons */
 .notepad-body .notepad-view, .notepad-body .notepad-input { flex:1 1 auto; height:calc(var(--np-line) * 11 + 2px); min-height:calc(var(--np-line) * 4 + 2px); max-height:none; }
 .modal.notepad-modal { overflow:hidden; }
+
+/* v12.64 Notepad opens bigger and can be resized (drag the right edge, bottom edge or corner; double-click to reset) */
+.modal.notepad-modal { position:relative; width:min(860px, 94vw); max-width:calc(100vw - 32px); height:min(760px, 84vh); max-height:calc(100vh - 32px); }
+.modal.notepad-modal.sized { max-width:calc(100vw - 32px); max-height:calc(100vh - 32px); }
+.notepad-body .notepad-view, .notepad-body .notepad-input { height:auto; flex:1 1 0; }
+.notepad-modal .tw-resize-right { top:56px; }
+@media (max-width: 640px) {
+  .modal.notepad-modal { width:100%; height:86dvh; max-height:86dvh; }
+  .notepad-body .notepad-view, .notepad-body .notepad-input { flex:1 1 0; height:auto; }
+  .modal.notepad-modal.sized { width:100% !important; height:86dvh !important; }
+}

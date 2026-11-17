@@ -622,6 +622,7 @@
   }
   makeResizable(document.querySelector('.task-edit-window'), 'taskwin', 520, 360);
   makeResizable(document.querySelector('#newTaskOverlay .new-task-window'), 'newtaskwin', 420, 320);
+  makeResizable(document.querySelector('#notepadOverlay .notepad-modal'), 'notepadwin', 420, 360);
 
   // Linen & Clay's summary cards just press the matching filter or tab
   document.querySelectorAll('.layout-card').forEach(card => {
