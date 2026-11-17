@@ -10,9 +10,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<link rel="stylesheet" href="styles.css?v=12.59">
-<script src="config.js?v=12.59"></script>
-<script src="auth-gate.js?v=12.59"></script>
+<link rel="stylesheet" href="styles.css?v=12.61">
+<script src="config.js?v=12.61"></script>
+<script src="auth-gate.js?v=12.61"></script>
 </head>
 <body>
 <script>
@@ -50,6 +50,7 @@
       <button id="lockBtn" class="lock-btn" aria-label="Lock" type="button" style="display:none;">&#128274;</button>
       <button id="settingsBtn" class="settings-btn" aria-label="Settings" type="button">&#9881;</button>
       <input type="search" id="searchInput" class="header-search" placeholder="Search..." autocomplete="off" aria-label="Search tasks, categories, people, notes">
+      <button type="button" class="notepad-link" id="notepadBtn" title="Open your Notepad">&#128221; Notepad</button>
 
       <h1 class="title-row">
         <svg class="title-logo" viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -258,7 +259,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.59</span></h2>
+      <h2>Settings <span class="settings-version">v12.61</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -552,6 +553,8 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.61</span> The Notepad now looks like a notepad (ruled lines, red margin, punched holes), has the Email button (Nick's list), spell checks as you type, and Enter always starts a new line.</li>
+          <li><span class="changelog-version">v12.60</span> New Notepad: a link under the search box opens a scratch pad for small bits of information, with bold, italics and bullets. It is kept when closed (and synced with your list), and has a Delete all button with confirmation.</li>
           <li><span class="changelog-version">v12.59</span> Spell check fix: typing boxes no longer force UK English (which could leave them with no dictionary at all), so the browser's own spell-check languages are used, and the first word typed is checked too.</li>
           <li><span class="changelog-version">v12.58</span> Simple formatting (B, I, • List, clickable links) and UK English spell check now on Jonny's and OJ's lists too.</li>
           <li><span class="changelog-version">v12.57</span> Simple formatting in subtasks and notes: B (bold), I (italic) and • List buttons, with web links made clickable, plus UK English spell check in typing boxes. Nick's list only for now.</li>
@@ -754,6 +757,24 @@
 
 <div id="toastBox" class="toast" role="status" aria-live="polite"></div>
 
+<div class="modal-overlay" id="notepadOverlay" role="dialog" aria-modal="true" aria-labelledby="notepadHeading">
+  <div class="modal notepad-modal">
+    <div class="modal-header">
+      <h2 id="notepadHeading">Notepad</h2>
+      <button id="closeNotepadBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
+    </div>
+    <div class="notepad-body">
+      <div id="notepadView" class="notepad-view subtask-text" tabindex="0" role="button" aria-label="Notepad text. Click to edit."></div>
+      <textarea id="notepadInput" class="notepad-input" hidden maxlength="20000" aria-label="Notepad" placeholder="Jot anything down here. It is kept when you close the Notepad."></textarea>
+    </div>
+    <div class="notepad-footer" id="notepadFooter">
+      <span class="notepad-saved" id="notepadSaved"></span>
+      <button type="button" class="notepad-delete" id="notepadDeleteAll">Delete all</button>
+      <button type="button" class="export-all-btn notepad-done" id="notepadDone">Done</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="confirmOverlay" role="alertdialog" aria-modal="true" aria-labelledby="confirmText">
   <div class="modal confirm-box">
     <p id="confirmText"></p>
@@ -776,8 +797,8 @@
 
 <script>/* secret boxes are plain text boxes drawn as dots, so browsers never offer to "save a password"; a browser that cannot draw the dots gets a real password box instead */
 document.querySelectorAll("input.masked").forEach(function (i) { var s = ""; try { s = getComputedStyle(i).webkitTextSecurity || ""; } catch (e) {} if (s !== "disc") i.type = "password"; });</script>
-<script src="gh-storage.js?v=12.59"></script>
-<script src="app.js?v=12.59"></script>
+<script src="gh-storage.js?v=12.61"></script>
+<script src="app.js?v=12.61"></script>
 <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}</script>
 </body>
 </html>

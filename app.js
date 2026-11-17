@@ -2405,12 +2405,14 @@
     });
   }
 
-  function openTaskEmail(t, how) {
-    const { subject, body } = buildTaskEmail(t);
+  function openTaskEmail(t, how, made) {
+    const { subject, body } = made || buildTaskEmail(t);
+    const what = made && made.what ? made.what : 'task';
+    const What = what.charAt(0).toUpperCase() + what.slice(1);
     const q = encodeURIComponent;
     if (how === 'copy') {
       copyText(body)
-        .then(() => showToast('Task copied. Paste it into an email or message.'))
+        .then(() => showToast(What + ' copied. Paste it into an email or message.'))
         .catch(() => showToast('Couldn\'t copy here. Try one of the email options instead.'));
       return;
     }
@@ -2434,9 +2436,9 @@
       mailBody = mailBody.slice(0, Math.floor(mailBody.length * 0.85));
     }
     if (tooLong) {
-      mailBody = mailBody.replace(/\s+\S*$/, '') + '\r\n\r\n[Shortened: the full task is on the clipboard, ready to paste]';
+      mailBody = mailBody.replace(/\s+\S*$/, '') + '\r\n\r\n[Shortened: the full ' + what + ' is on the clipboard, ready to paste]';
       copyText(body).catch(() => { /* the draft still opens */ });
-      showToast('This task is long, so the draft is shortened. The full task is copied, ready to paste.');
+      showToast('This ' + what + ' is long, so the draft is shortened. The full ' + what + ' is copied, ready to paste.');
     }
     const link = document.createElement('a');
     link.href = 'mailto:?subject=' + q(subject) + '&body=' + q(mailBody);
@@ -2454,7 +2456,8 @@
     });
   });
 
-  function buildEmailMenu(t) {
+  // makeEmail (optional): returns { subject, body, what } for something other than a task, e.g. the Notepad
+  function buildEmailMenu(t, makeEmail) {
     const wrap = document.createElement('div');
     wrap.className = 'email-menu-wrap';
     const btn = document.createElement('button');
@@ -2480,7 +2483,7 @@
       item.textContent = label;
       item.addEventListener('click', () => {
         setOpen(false);
-        openTaskEmail(t, how);
+        openTaskEmail(t, how, makeEmail ? makeEmail() : null);
       });
       menu.appendChild(item);
     });
@@ -3654,8 +3657,143 @@
   });
 
 
+  // ---------- Notepad: one scratch pad per list, kept (and synced) when closed ----------
+  // Shown formatted; click the text to type. Saved a moment after each change, and on closing.
+  const NOTEPAD_KEY = STORAGE_PREFIX + 'notepad';
+  const notepadOverlay = document.getElementById('notepadOverlay');
+  const notepadView = document.getElementById('notepadView');
+  const notepadInput = document.getElementById('notepadInput');
+  const notepadSaved = document.getElementById('notepadSaved');
+  const notepadFooter = document.getElementById('notepadFooter');
+  let notepadText = '';
+  let notepadEditing = false;
+  let notepadTimer = null;
+
+  notepadInput.spellcheck = true;
+  const notepadBar = buildFormatBar(notepadInput);
+  // pressing B / I / List while reading switches to typing first
+  notepadBar.addEventListener('pointerdown', () => { if (!notepadEditing) startNotepadEdit(); }, true);
+  notepadBar.addEventListener('mousedown', () => { if (!notepadEditing) startNotepadEdit(); }, true);
+  notepadFooter.insertBefore(notepadBar, notepadFooter.firstChild);
+  // in the Notepad, Enter always starts a new line
+  const notepadListBtn = notepadBar.querySelector('.fmt-list');
+  notepadListBtn.title = 'Bullet points (one per line)';
+  notepadListBtn.setAttribute('aria-label', notepadListBtn.title);
+  // Email the Notepad (same choices as a task's Email button; for users in config.js emailTaskUsers)
+  if (emailTaskOn) {
+    const notepadEmail = buildEmailMenu(null, () => {
+      const text = notepadEditing ? notepadInput.value : notepadText;
+      return {
+        what: 'notepad',
+        subject: 'Notepad, ' + new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        body: plainNoteText(text).trim() || '(The Notepad is empty.)'
+      };
+    });
+    notepadEmail.classList.add('notepad-email');
+    notepadFooter.insertBefore(notepadEmail, document.getElementById('notepadDeleteAll'));
+  }
+
+  function renderNotepadView() {
+    if (notepadText.trim()) {
+      notepadView.innerHTML = formatNoteHtml(notepadText);
+      notepadView.classList.remove('empty');
+    } else {
+      notepadView.textContent = 'Nothing here yet. Click to start typing.';
+      notepadView.classList.add('empty');
+    }
+  }
+  function saveNotepadNow() {
+    clearTimeout(notepadTimer);
+    notepadTimer = null;
+    if (notepadEditing) notepadText = notepadInput.value;
+    queuedStorageSet(NOTEPAD_KEY, notepadText);
+    notepadSaved.textContent = '✓ Saved';
+  }
+  function startNotepadEdit() {
+    if (notepadEditing) return;
+    notepadEditing = true;
+    notepadInput.value = notepadText;
+    notepadView.hidden = true;
+    notepadInput.hidden = false;
+    notepadInput.focus();
+    notepadInput.setSelectionRange(notepadInput.value.length, notepadInput.value.length);
+  }
+  function finishNotepadEdit() {
+    if (!notepadEditing) return;
+    if (notepadTimer || notepadInput.value !== notepadText) saveNotepadNow();
+    notepadEditing = false;
+    notepadInput.hidden = true;
+    notepadView.hidden = false;
+    renderNotepadView();
+  }
+  async function openNotepad() {
+    try {
+      const r = await storageGet(NOTEPAD_KEY);
+      notepadText = r ? String(r.value) : '';
+    } catch (e) { /* keep what we had */ }
+    notepadSaved.textContent = '';
+    notepadEditing = false;
+    notepadInput.hidden = true;
+    notepadView.hidden = false;
+    renderNotepadView();
+    notepadOverlay.classList.add('open');
+    if (!notepadText.trim()) startNotepadEdit();
+    else notepadView.focus();
+  }
+  function closeNotepad() {
+    finishNotepadEdit();
+    notepadOverlay.classList.remove('open');
+    document.getElementById('notepadBtn').focus();
+  }
+
+  document.getElementById('notepadBtn').addEventListener('click', openNotepad);
+  document.getElementById('closeNotepadBtn').addEventListener('click', closeNotepad);
+  document.getElementById('notepadDone').addEventListener('click', closeNotepad);
+  notepadOverlay.addEventListener('click', e => { if (e.target === notepadOverlay) closeNotepad(); });
+  notepadView.addEventListener('click', e => {
+    if (e.target.closest('a')) return;   // a link opens the page, not the editor
+    startNotepadEdit();
+  });
+  notepadView.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.target.closest('a')) { e.preventDefault(); startNotepadEdit(); }
+  });
+  notepadInput.addEventListener('input', () => {
+    notepadSaved.textContent = 'Saving…';
+    clearTimeout(notepadTimer);
+    notepadTimer = setTimeout(saveNotepadNow, 700);
+  });
+  // leaving the box shows the formatted text again (the format buttons keep the box focused, so they don't)
+  notepadInput.addEventListener('blur', () => {
+    setTimeout(() => { if (notepadOverlay.classList.contains('open') && document.activeElement !== notepadInput) finishNotepadEdit(); }, 0);
+  });
+  document.getElementById('notepadDeleteAll').addEventListener('click', async () => {
+    const current = notepadEditing ? notepadInput.value : notepadText;
+    if (!current.trim()) { showToast('The Notepad is already empty.'); return; }
+    if (!(await askConfirm('Delete everything in your Notepad? This can\'t be undone.', 'Delete all'))) return;
+    notepadInput.value = '';
+    notepadText = '';
+    clearTimeout(notepadTimer);
+    notepadTimer = null;
+    queuedStorageSet(NOTEPAD_KEY, '');
+    notepadEditing = false;
+    notepadInput.hidden = true;
+    notepadView.hidden = false;
+    renderNotepadView();
+    notepadSaved.textContent = 'Notepad cleared';
+  });
+  // another device changed the Notepad: show it, unless it's being typed in here right now
+  window.addEventListener('todo-remote-update', async () => {
+    if (notepadEditing) return;
+    try {
+      const r = await storageGet(NOTEPAD_KEY);
+      notepadText = r ? String(r.value) : '';
+      if (notepadOverlay.classList.contains('open')) renderNotepadView();
+    } catch (e) { /* keep what is on screen */ }
+  });
+
   // ---------- keyboard shortcuts and focus return ----------
   const overlayClosers = [
+    ['notepadOverlay', 'closeNotepadBtn'],
     ['newTaskOverlay', 'newTaskWindowClose'],
     ['settingsOverlay', 'closeSettingsBtn'],
     ['reminderOverlay', 'closeReminderBtn'],
