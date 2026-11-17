@@ -1966,15 +1966,26 @@
               toggleExpanded(item.id);
             });
 
-            if (item.pending) {
-              markCompleteBtn = document.createElement('button');
-              markCompleteBtn.type = 'button';
-              markCompleteBtn.className = 'mark-complete-btn';
-              markCompleteBtn.textContent = 'Move to Complete';
-              markCompleteBtn.addEventListener('click', () => {
-                toggle(item.id);
-              });
+            // Close task: every open subtask must be ticked first, then it asks "are you sure?"
+            markCompleteBtn = document.createElement('button');
+            markCompleteBtn.type = 'button';
+            markCompleteBtn.className = 'mark-complete-btn';
+            markCompleteBtn.textContent = '✓ Close task';
+            markCompleteBtn.title = 'Mark this task as complete';
+            markCompleteBtn.addEventListener('click', async () => {
+              commitPending();
+              const openSubtasks = (item.subtasks || []).filter(s => s.type !== 'note' && !s.done);
+              if (openSubtasks.length > 0) {
+                render();
+                showToast('This task still has ' + openSubtasks.length + ' open subtask' + (openSubtasks.length === 1 ? '' : 's') + '. Complete them first.');
+                return;
+              }
+              if (!(await askConfirm('Are you sure you want to close this task? It will move to Completed.', 'Close task'))) return;
+              if (item.done) return;
+              toggle(item.id);
+            });
 
+            if (item.pending) {
               if (item.snoozeUntil) {
                 snoozeInfo = document.createElement('span');
                 snoozeInfo.className = 'snooze-info';
