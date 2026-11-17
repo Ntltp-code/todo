@@ -10,9 +10,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<link rel="stylesheet" href="styles.css?v=12.62">
-<script src="config.js?v=12.62"></script>
-<script src="auth-gate.js?v=12.62"></script>
+<link rel="stylesheet" href="styles.css?v=12.63">
+<script src="config.js?v=12.63"></script>
+<script src="auth-gate.js?v=12.63"></script>
 </head>
 <body>
 <script>
@@ -259,7 +259,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.62</span></h2>
+      <h2>Settings <span class="settings-version">v12.63</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -553,6 +553,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.63</span> The Notepad now holds up to 250,000 characters (was 100,000).</li>
           <li><span class="changelog-version">v12.62</span> The Notepad now holds up to 100,000 characters (was 20,000).</li>
           <li><span class="changelog-version">v12.61</span> The Notepad now looks like a notepad (ruled lines, red margin, punched holes), has the Email button (Nick's list), spell checks as you type, and Enter always starts a new line.</li>
           <li><span class="changelog-version">v12.60</span> New Notepad: a link under the search box opens a scratch pad for small bits of information, with bold, italics and bullets. It is kept when closed (and synced with your list), and has a Delete all button with confirmation.</li>
@@ -766,7 +767,7 @@
     </div>
     <div class="notepad-body">
       <div id="notepadView" class="notepad-view subtask-text" tabindex="0" role="button" aria-label="Notepad text. Click to edit."></div>
-      <textarea id="notepadInput" class="notepad-input" hidden maxlength="100000" aria-label="Notepad" placeholder="Jot anything down here. It is kept when you close the Notepad."></textarea>
+      <textarea id="notepadInput" class="notepad-input" hidden maxlength="250000" aria-label="Notepad" placeholder="Jot anything down here. It is kept when you close the Notepad."></textarea>
     </div>
     <div class="notepad-footer" id="notepadFooter">
       <span class="notepad-saved" id="notepadSaved"></span>
@@ -798,8 +799,8 @@
 
 <script>/* secret boxes are plain text boxes drawn as dots, so browsers never offer to "save a password"; a browser that cannot draw the dots gets a real password box instead */
 document.querySelectorAll("input.masked").forEach(function (i) { var s = ""; try { s = getComputedStyle(i).webkitTextSecurity || ""; } catch (e) {} if (s !== "disc") i.type = "password"; });</script>
-<script src="gh-storage.js?v=12.62"></script>
-<script src="app.js?v=12.62"></script>
+<script src="gh-storage.js?v=12.63"></script>
+<script src="app.js?v=12.63"></script>
 <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}</script>
 </body>
 </html>
