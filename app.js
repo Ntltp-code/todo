@@ -2025,15 +2025,15 @@
             }
           }
 
-          // pinned footer: Delete apart on the left, task actions in the middle, Done on the right
+          // pinned footer: Close task first, then Delete, task actions in the middle, Done on the right
           if (snoozeInfo) panelFooter.appendChild(snoozeInfo);
+          if (markCompleteBtn) panelFooter.appendChild(markCompleteBtn);
           panelFooter.appendChild(remove);
           if (cancelTaskDeleteBtn) panelFooter.appendChild(cancelTaskDeleteBtn);
           panelFooter.appendChild(spacer);
           if (pendingToggleBtn) panelFooter.appendChild(pendingToggleBtn);
           if (sleep1WeekBtn) panelFooter.appendChild(sleep1WeekBtn);
           if (sleepUntilInput) panelFooter.appendChild(sleepUntilInput);
-          if (markCompleteBtn) panelFooter.appendChild(markCompleteBtn);
           panelFooter.appendChild(savedNote);
           panelFooter.appendChild(saveTaskBtn);
           panelFooter.appendChild(doneTaskBtn);

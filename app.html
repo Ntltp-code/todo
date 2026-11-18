@@ -10,9 +10,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<link rel="stylesheet" href="styles.css?v=12.67">
-<script src="config.js?v=12.67"></script>
-<script src="auth-gate.js?v=12.67"></script>
+<link rel="stylesheet" href="styles.css?v=12.68">
+<script src="config.js?v=12.68"></script>
+<script src="auth-gate.js?v=12.68"></script>
 </head>
 <body>
 <script>
@@ -260,7 +260,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.67</span></h2>
+      <h2>Settings <span class="settings-version">v12.68</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -554,6 +554,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.68</span> The Close task button now sits at the far left of the task window's buttons.</li>
           <li><span class="changelog-version">v12.67</span> Sleep 1 Week and Sleep until… now ask "Put this task to sleep until …?" before the task goes to sleep.</li>
           <li><span class="changelog-version">v12.66</span> Every open task now has a "Close task" button in its window (it replaces "Move to Complete" on pending tasks). All subtasks still need ticking first, and it asks "Are you sure?" before closing. "Are you sure?" boxes now always show on top of an open task.</li>
           <li><span class="changelog-version">v12.65</span> Subtask and note boxes now work like the Notepad: Enter starts a new line. Press the new + Add button (or Ctrl+Enter) to add the entry; Save and the New Task window's Add still keep anything typed.</li>
@@ -807,8 +808,8 @@
 
 <script>/* secret boxes are plain text boxes drawn as dots, so browsers never offer to "save a password"; a browser that cannot draw the dots gets a real password box instead */
 document.querySelectorAll("input.masked").forEach(function (i) { var s = ""; try { s = getComputedStyle(i).webkitTextSecurity || ""; } catch (e) {} if (s !== "disc") i.type = "password"; });</script>
-<script src="gh-storage.js?v=12.67"></script>
-<script src="app.js?v=12.67"></script>
+<script src="gh-storage.js?v=12.68"></script>
+<script src="app.js?v=12.68"></script>
 <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}</script>
 </body>
 </html>
