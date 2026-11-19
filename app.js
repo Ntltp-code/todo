@@ -713,6 +713,21 @@
     return true;
   }
 
+  // clicking into a box near the bottom of a scrolling window only shows its top edge: scroll so the
+  // whole box and its button below it are in view (again once a phone/iPad keyboard has opened)
+  function revealOnFocus(box, lastEl) {
+    const reveal = () => {
+      if (document.activeElement !== box) return;
+      const target = lastEl || box;
+      if (target.offsetParent === null) return;
+      target.scrollIntoView({ block: 'nearest' });
+    };
+    box.addEventListener('focus', () => {
+      requestAnimationFrame(reveal);
+      setTimeout(reveal, 400);
+    });
+  }
+
   const confirmOverlay = document.getElementById('confirmOverlay');
   function askConfirm(message, okLabel) {
     return new Promise(resolve => {
@@ -1877,6 +1892,7 @@
           addEntryBtn.title = 'Add this subtask or note (Ctrl+Enter)';
           addEntryBtn.addEventListener('click', addSubtask);
           addSubtaskRow.appendChild(addEntryBtn);
+          revealOnFocus(addSubtaskInput, addEntryBtn);
 
           const panelFooter = document.createElement('div');
           panelFooter.className = 'notes-footer';
@@ -2901,6 +2917,7 @@
   }
 
   document.getElementById('newEntryAddBtn').addEventListener('click', () => { addNewEntry(); newEntryInput.focus(); });
+  revealOnFocus(newEntryInput, document.getElementById('newEntryAddBtn'));
   newEntrySubtaskBtn.addEventListener('click', () => setNewEntryType('subtask'));
   newEntryNoteBtn.addEventListener('click', () => setNewEntryType('note'));
   newEntryInput.addEventListener('keydown', e => {

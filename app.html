@@ -10,9 +10,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<link rel="stylesheet" href="styles.css?v=12.69">
-<script src="config.js?v=12.69"></script>
-<script src="auth-gate.js?v=12.69"></script>
+<link rel="stylesheet" href="styles.css?v=12.70">
+<script src="config.js?v=12.70"></script>
+<script src="auth-gate.js?v=12.70"></script>
 </head>
 <body>
 <script>
@@ -260,7 +260,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.69</span></h2>
+      <h2>Settings <span class="settings-version">v12.70</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -554,6 +554,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.70</span> Clicking into the subtask / note box now scrolls the window so the whole box and its + Add button are in view.</li>
           <li><span class="changelog-version">v12.69</span> The Notepad no longer has a character limit.</li>
           <li><span class="changelog-version">v12.68</span> The Close task button now sits at the far left of the task window's buttons.</li>
           <li><span class="changelog-version">v12.67</span> Sleep 1 Week and Sleep until… now ask "Put this task to sleep until …?" before the task goes to sleep.</li>
@@ -809,8 +810,8 @@
 
 <script>/* secret boxes are plain text boxes drawn as dots, so browsers never offer to "save a password"; a browser that cannot draw the dots gets a real password box instead */
 document.querySelectorAll("input.masked").forEach(function (i) { var s = ""; try { s = getComputedStyle(i).webkitTextSecurity || ""; } catch (e) {} if (s !== "disc") i.type = "password"; });</script>
-<script src="gh-storage.js?v=12.69"></script>
-<script src="app.js?v=12.69"></script>
+<script src="gh-storage.js?v=12.70"></script>
+<script src="app.js?v=12.70"></script>
 <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}</script>
 </body>
 </html>
