@@ -29,7 +29,12 @@
       if (r.status === 404) return null;
       if (!r.ok) { var e = new Error('GitHub ' + r.status); e.status = r.status; throw e; }
       var j = await r.json();
-      return { data: JSON.parse(b64d(j.content)), sha: j.sha };
+      if (j.content || j.encoding !== 'none') return { data: JSON.parse(b64d(j.content || '')), sha: j.sha };
+      // GitHub leaves the contents out of this reply for files over 1 MB: ask again for the file as plain text
+      var rr = await fetch(url(path, c) + '?ref=' + encodeURIComponent(c.branch) + '&t=' + Date.now(),
+        { headers: Object.assign(hdr(c), { 'Accept': 'application/vnd.github.raw+json' }), cache: 'no-store' });
+      if (!rr.ok) { var e2 = new Error('GitHub ' + rr.status); e2.status = rr.status; throw e2; }
+      return { data: JSON.parse(await rr.text()), sha: j.sha };
     },
     putFile: async function (path, obj, sha, keepalive) {
       var c = cfg();
