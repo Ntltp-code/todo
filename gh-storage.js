@@ -209,6 +209,27 @@
     return GH.updateFile(user + '-archive.json', function () { return { tasks: [] }; });
   };
 
+  // messages between account holders: one shared file, <dir>/messages.json (plain, not encrypted)
+  // { messages: [{ id, from, to, text, sentAt, about?: {id, text}, readAt?, deletedBy?: [user ids] }] }
+  GH.readMessages = async function () {
+    var f = await GH.getFile('messages.json');
+    return (f && f.data && Array.isArray(f.data.messages)) ? f.data.messages : [];
+  };
+  GH.changeMessages = function (mutate) {
+    return GH.updateFile('messages.json', function (d) {
+      var all = (d && Array.isArray(d.messages)) ? d.messages : [];
+      mutate(all);
+      // drop messages both people have deleted, and keep the file a sensible size
+      all = all.filter(function (m) {
+        var del = m.deletedBy || [];
+        return !(del.indexOf(m.from) >= 0 && del.indexOf(m.to) >= 0);
+      });
+      all.sort(function (a, b) { return (a.sentAt || 0) - (b.sentAt || 0); });
+      if (all.length > 1000) all = all.slice(all.length - 1000);
+      return { messages: all };
+    });
+  };
+
   var U = (new URLSearchParams(location.search).get('u') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '');
   if (!U) return;
 

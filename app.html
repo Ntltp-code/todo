@@ -10,9 +10,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<link rel="stylesheet" href="styles.css?v=12.72">
-<script src="config.js?v=12.72"></script>
-<script src="auth-gate.js?v=12.72"></script>
+<link rel="stylesheet" href="styles.css?v=12.73">
+<script src="config.js?v=12.73"></script>
+<script src="auth-gate.js?v=12.73"></script>
 </head>
 <body>
 <script>
@@ -99,6 +99,7 @@
         <button type="button" class="filter-trigger chip-overdue" id="overdueTopTrigger">Overdue <span id="overdueTopCount">0</span></button>
         <button type="button" class="filter-trigger chip-neutral" id="staleTrigger" title="Open tasks nobody has changed in 14+ days">Untouched 14d+ <span id="staleCount">0</span></button>
       </span>
+      <button type="button" class="select-btn messages-btn" id="messagesBtn" title="Messages">&#128172; Messages <span class="msg-badge" id="messagesBadge" hidden>0</span></button>
       <button type="button" class="select-btn" id="briefingBtn" hidden>Briefing</button>
       <button type="button" class="select-btn" id="selectBtn" aria-pressed="false">Select</button>
     </div>
@@ -260,7 +261,7 @@
 <div class="modal-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="modal">
     <div class="modal-header">
-      <h2>Settings <span class="settings-version">v12.72</span></h2>
+      <h2>Settings <span class="settings-version">v12.73</span></h2>
       <button id="closeSettingsBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
     </div>
 
@@ -554,6 +555,7 @@
       </button>
       <div class="accordion-content" id="changelogContent">
         <ul class="changelog-list">
+          <li><span class="changelog-version">v12.73</span> Messages: send a message to Jonny, OJ or Nick from the new 💬 Messages button (or from a task's 💬 Message button, which says which task it's about). New messages pop up within a minute, with Reply and Mark as read; Sent shows when each was read. Messages are kept in the private GitHub repo as plain text (not encrypted).</li>
           <li><span class="changelog-version">v12.72</span> The Notepad has a Select all button beside B / I / List, ready to copy, format or replace everything.</li>
           <li><span class="changelog-version">v12.71</span> Fixed "Could not reach GitHub (Unexpected end of JSON input)": a list stored on GitHub that has grown past 1 MB now loads properly.</li>
           <li><span class="changelog-version">v12.70</span> Clicking into the subtask / note box now scrolls the window so the whole box and its + Add button are in view.</li>
@@ -790,6 +792,40 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="messagesOverlay" role="dialog" aria-modal="true" aria-labelledby="messagesHeading">
+  <div class="modal messages-modal">
+    <div class="modal-header">
+      <h2 id="messagesHeading">Messages</h2>
+      <button id="closeMessagesBtn" class="modal-close" aria-label="Close" type="button">&#10005;</button>
+    </div>
+    <div class="msg-tabs" role="tablist">
+      <button type="button" class="msg-tab" data-tab="inbox" role="tab">Inbox <span class="msg-tab-count" id="msgInboxCount"></span></button>
+      <button type="button" class="msg-tab" data-tab="sent" role="tab">Sent</button>
+      <button type="button" class="msg-tab msg-tab-new" data-tab="new" role="tab">+ New message</button>
+    </div>
+    <p class="msg-notice" id="msgNotice" hidden>Messages need GitHub sync turned on on this device (login page &gt; Connect to GitHub).</p>
+    <div class="msg-body">
+      <ul class="msg-list" id="msgList"></ul>
+      <div class="msg-compose" id="msgCompose" hidden>
+        <div class="msg-compose-row">
+          <label class="field-label" for="msgTo">To</label>
+          <select id="msgTo" class="msg-to"></select>
+        </div>
+        <div class="msg-about-chip" id="msgAbout" hidden></div>
+        <div class="msg-format-row" id="msgFormatRow"></div>
+        <textarea id="msgText" class="msg-text-input" rows="6" maxlength="5000" aria-label="Message" placeholder="Write your message... (Enter for a new line; press Send, or Ctrl+Enter, to send it)"></textarea>
+        <div class="msg-compose-actions">
+          <span class="msg-status" id="msgStatus"></span>
+          <button type="button" class="export-all-btn msg-send" id="msgSend">Send</button>
+        </div>
+      </div>
+    </div>
+    <div class="tw-resize tw-resize-right" data-resize="x" aria-hidden="true"></div>
+    <div class="tw-resize tw-resize-bottom" data-resize="y" aria-hidden="true"></div>
+    <div class="tw-resize tw-resize-corner" data-resize="xy" tabindex="0" role="button" aria-label="Resize window: drag, or use the arrow keys. Double-click or press Delete to reset." title="Drag to resize. Double-click to reset."></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="confirmOverlay" role="alertdialog" aria-modal="true" aria-labelledby="confirmText">
   <div class="modal confirm-box">
     <p id="confirmText"></p>
@@ -812,8 +848,8 @@
 
 <script>/* secret boxes are plain text boxes drawn as dots, so browsers never offer to "save a password"; a browser that cannot draw the dots gets a real password box instead */
 document.querySelectorAll("input.masked").forEach(function (i) { var s = ""; try { s = getComputedStyle(i).webkitTextSecurity || ""; } catch (e) {} if (s !== "disc") i.type = "password"; });</script>
-<script src="gh-storage.js?v=12.72"></script>
-<script src="app.js?v=12.72"></script>
+<script src="gh-storage.js?v=12.73"></script>
+<script src="app.js?v=12.73"></script>
 <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}</script>
 </body>
 </html>

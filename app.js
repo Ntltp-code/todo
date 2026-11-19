@@ -664,7 +664,7 @@
   // ---------- toasts, undo and in-page confirm ----------
   const toastBox = document.getElementById('toastBox');
   let toastTimer = null;
-  function showToast(message, undoFn) {
+  function showToast(message, undoFn, actionLabel) {
     toastBox.textContent = '';
     const msg = document.createElement('span');
     msg.textContent = message;
@@ -672,7 +672,7 @@
     if (undoFn) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = 'Undo';
+      b.textContent = actionLabel || 'Undo';
       b.addEventListener('click', () => { toastBox.classList.remove('show'); undoFn(); });
       toastBox.appendChild(b);
     }
@@ -1654,6 +1654,16 @@
           nameRow.appendChild(field('Task', editName));
           nameRow.appendChild(starBtn);
           if (emailTaskOn) nameRow.appendChild(buildEmailMenu(item));
+          // send another account holder a message about this task
+          if (((window.TODO_CONFIG && TODO_CONFIG.users) || []).length > 1) {
+            const messageBtn = document.createElement('button');
+            messageBtn.type = 'button';
+            messageBtn.className = 'star-toggle task-message-btn';
+            messageBtn.textContent = '💬 Message';
+            messageBtn.title = 'Send someone a message about this task';
+            messageBtn.addEventListener('click', () => { if (window.startTaskMessage) window.startTaskMessage(item); });
+            nameRow.appendChild(messageBtn);
+          }
 
           editFields.appendChild(nameRow);
           editFields.appendChild(field('Summary', editSummary));
@@ -3850,7 +3860,303 @@
   });
 
   // ---------- keyboard shortcuts and focus return ----------
+  // ---------- Messages between account holders ----------
+  // Kept in one shared file on GitHub (data/messages.json, plain text, not encrypted), checked once a minute.
+  const MSG_ME = (new URLSearchParams(location.search).get('u') || '').toLowerCase();
+  const MSG_USERS = (window.TODO_CONFIG && TODO_CONFIG.users) || [];
+  const msgName = id => (MSG_USERS.find(u => u.id === id) || {}).name || id;
+  const messagesOverlay = document.getElementById('messagesOverlay');
+  const messagesBtn = document.getElementById('messagesBtn');
+  const messagesBadge = document.getElementById('messagesBadge');
+  const msgList = document.getElementById('msgList');
+  const msgCompose = document.getElementById('msgCompose');
+  const msgTo = document.getElementById('msgTo');
+  const msgText = document.getElementById('msgText');
+  const msgAbout = document.getElementById('msgAbout');
+  const msgStatus = document.getElementById('msgStatus');
+  const msgSend = document.getElementById('msgSend');
+  const msgNotice = document.getElementById('msgNotice');
+  const MSG_CACHE = 'todo_msgs_' + MSG_ME;
+  const MSG_POPPED = 'todo_msgs_popped_' + MSG_ME;
+  let allMessages = [];
+  let msgTab = 'inbox';
+  let msgAboutTask = null;     // { id, text } when the message is about a task
+  let msgLoading = false;
+  let msgLastLoad = 0;
+  const canMessage = () => !!(window.TodoGH && TodoGH.cfg && TodoGH.cfg().token);
+
+  try { const c = JSON.parse(localStorage.getItem(MSG_CACHE) || '[]'); if (Array.isArray(c)) allMessages = c; } catch (e) { /* none yet */ }
+  const msgPopped = new Set((() => { try { return JSON.parse(sessionStorage.getItem(MSG_POPPED) || '[]'); } catch (e) { return []; } })());
+  function rememberPopped(ids) {
+    ids.forEach(id => msgPopped.add(id));
+    try { sessionStorage.setItem(MSG_POPPED, JSON.stringify([...msgPopped])); } catch (e) { /* fine */ }
+  }
+
+  MSG_USERS.filter(u => u.id !== MSG_ME).forEach(u => {
+    const o = document.createElement('option');
+    o.value = u.id;
+    o.textContent = u.name;
+    msgTo.appendChild(o);
+  });
+  if (!msgTo.options.length) messagesBtn.hidden = true;
+
+  enableSpellcheck(msgText);
+  if (richNotesOn) document.getElementById('msgFormatRow').appendChild(buildFormatBar(msgText));
+  makeResizable(document.querySelector('#messagesOverlay .messages-modal'), 'messageswin', 380, 320);
+
+  function formatWhen(ts) {
+    const d = new Date(ts);
+    const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    if (d.toDateString() === new Date().toDateString()) return 'Today ' + time;
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    if (d.toDateString() === y.toDateString()) return 'Yesterday ' + time;
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }) + ' ' + time;
+  }
+  const notDeleted = m => !(m.deletedBy || []).includes(MSG_ME);
+  const myInbox = () => allMessages.filter(m => m.to === MSG_ME && notDeleted(m)).sort((a, b) => b.sentAt - a.sentAt);
+  const mySent = () => allMessages.filter(m => m.from === MSG_ME && notDeleted(m)).sort((a, b) => b.sentAt - a.sentAt);
+  const unreadMessages = () => myInbox().filter(m => !m.readAt);
+
+  function keepMessages(list) {
+    allMessages = list.filter(m => m.to === MSG_ME || m.from === MSG_ME);
+    try { localStorage.setItem(MSG_CACHE, JSON.stringify(allMessages)); } catch (e) { /* storage full: fine */ }
+    updateMessagesBadge();
+    if (messagesOverlay.classList.contains('open') && msgTab !== 'new') renderMessages();
+  }
+
+  function updateMessagesBadge() {
+    const n = unreadMessages().length;
+    messagesBadge.textContent = n;
+    messagesBadge.hidden = !n;
+    messagesBtn.classList.toggle('has-unread', n > 0);
+    messagesBtn.title = n ? n + ' unread message' + (n === 1 ? '' : 's') : 'Messages';
+    const c = document.getElementById('msgInboxCount');
+    c.textContent = n ? '(' + n + ')' : '';
+  }
+
+  // change the shared file (re-reading it first, so nobody's message is lost), showing the change here straight away
+  async function changeMessages(mutate, failMsg) {
+    const before = JSON.stringify(allMessages);
+    const local = JSON.parse(before);
+    mutate(local);
+    keepMessages(local);
+    try {
+      const saved = await TodoGH.changeMessages(mutate);
+      keepMessages(saved.messages);
+      return true;
+    } catch (e) {
+      keepMessages(JSON.parse(before));
+      showToast((failMsg || 'Could not update your messages') + ' (' + e.message + ').');
+      return false;
+    }
+  }
+
+  async function loadMessages(force) {
+    if (!canMessage() || msgLoading) return;
+    if (!force && Date.now() - msgLastLoad < 15000) return;
+    msgLoading = true;
+    try {
+      keepMessages(await TodoGH.readMessages());
+      msgLastLoad = Date.now();
+      announceNewMessages();
+    } catch (e) { /* offline: try again later */ }
+    msgLoading = false;
+  }
+
+  // a new message pops up the Messages window, or (if something else is open or you're typing) a toast
+  function announceNewMessages() {
+    const fresh = unreadMessages().filter(m => !msgPopped.has(m.id));
+    if (!fresh.length) return;
+    rememberPopped(fresh.map(m => m.id));
+    const busy = document.querySelector('.modal-overlay.open, .new-task-overlay.open') ||
+      /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '');
+    if (!busy) { openMessages('inbox'); return; }
+    if (messagesOverlay.classList.contains('open')) return;
+    const who = [...new Set(fresh.map(m => msgName(m.from)))].join(' and ');
+    showToast(fresh.length === 1 ? 'New message from ' + who + '.' : fresh.length + ' new messages from ' + who + '.', () => openMessages('inbox'), 'Open');
+  }
+
+  function openTaskById(id) {
+    const t = todos.find(x => x.id === id);
+    if (!t) return;
+    closeMessages();
+    if (searchInput.value) { searchInput.value = ''; searchInput.dispatchEvent(new Event('input', { bubbles: true })); }
+    filterMode = null;
+    expandedIds.clear();
+    expandedIds.add(id);
+    setPage(t.done ? 'done' : t.pending ? 'pending' : 'active');
+  }
+
+  function msgButton(label, cls, onClick) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'msg-action ' + (cls || '');
+    b.textContent = label;
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  function renderMessages() {
+    document.querySelectorAll('#messagesOverlay .msg-tab').forEach(b => {
+      const on = b.dataset.tab === msgTab;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    msgNotice.hidden = canMessage();
+    const composing = msgTab === 'new';
+    msgCompose.hidden = !composing;
+    msgList.hidden = composing;
+    if (composing) {
+      msgAbout.hidden = !msgAboutTask;
+      msgAbout.textContent = '';
+      if (msgAboutTask) {
+        const label = document.createElement('span');
+        label.textContent = 'About: ' + msgAboutTask.text;
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'msg-about-remove';
+        x.textContent = '✕';
+        x.title = 'Not about this task';
+        x.setAttribute('aria-label', 'Remove the task from this message');
+        x.addEventListener('click', () => { msgAboutTask = null; renderMessages(); });
+        msgAbout.appendChild(label);
+        msgAbout.appendChild(x);
+      }
+      msgSend.disabled = !canMessage();
+      return;
+    }
+    const inbox = msgTab === 'inbox';
+    const list = inbox ? myInbox() : mySent();
+    msgList.textContent = '';
+    if (!list.length) {
+      const li = document.createElement('li');
+      li.className = 'msg-empty';
+      li.textContent = inbox ? 'No messages yet.' : 'You haven\'t sent any messages yet.';
+      msgList.appendChild(li);
+    }
+    if (inbox && unreadMessages().length > 1) {
+      const li = document.createElement('li');
+      li.className = 'msg-bulk';
+      li.appendChild(msgButton('Mark all as read', '', () => markRead(unreadMessages().map(m => m.id))));
+      msgList.appendChild(li);
+    }
+    list.forEach(m => {
+      const li = document.createElement('li');
+      li.className = 'msg-card' + (inbox && !m.readAt ? ' unread' : '');
+      const head = document.createElement('div');
+      head.className = 'msg-head';
+      const who = document.createElement('strong');
+      who.textContent = inbox ? 'From ' + msgName(m.from) : 'To ' + msgName(m.to);
+      const when = document.createElement('span');
+      when.className = 'msg-when';
+      when.textContent = formatWhen(m.sentAt);
+      head.appendChild(who);
+      head.appendChild(when);
+      li.appendChild(head);
+      if (m.about && m.about.text) {
+        const about = document.createElement('div');
+        about.className = 'msg-about';
+        const t = document.createElement('span');
+        t.textContent = 'About: ' + m.about.text;
+        about.appendChild(t);
+        if (todos.some(x => x.id === m.about.id)) about.appendChild(msgButton('Open task', 'msg-open-task', () => openTaskById(m.about.id)));
+        li.appendChild(about);
+      }
+      const body = document.createElement('div');
+      body.className = 'msg-text subtask-text';
+      body.innerHTML = formatNoteHtml(m.text);
+      li.appendChild(body);
+      const actions = document.createElement('div');
+      actions.className = 'msg-actions';
+      if (inbox) {
+        actions.appendChild(msgButton('Reply', 'msg-reply', () => {
+          if (!m.readAt) markRead([m.id]);
+          startMessage(m.from, m.about || null);
+        }));
+        if (!m.readAt) actions.appendChild(msgButton('Mark as read', 'msg-read', () => markRead([m.id])));
+      } else {
+        const seen = document.createElement('span');
+        seen.className = 'msg-seen';
+        seen.textContent = m.readAt ? '✓ Read ' + formatWhen(m.readAt) : 'Not read yet';
+        actions.appendChild(seen);
+      }
+      actions.appendChild(msgButton('Delete', 'msg-delete', () => deleteMessage(m)));
+      li.appendChild(actions);
+      msgList.appendChild(li);
+    });
+  }
+
+  function markRead(ids) {
+    const now = Date.now();
+    return changeMessages(all => all.forEach(m => { if (ids.includes(m.id) && m.to === MSG_ME && !m.readAt) m.readAt = now; }));
+  }
+  async function deleteMessage(m) {
+    if (!(await askConfirm('Delete this message? It goes from your ' + (m.to === MSG_ME ? 'Inbox' : 'Sent messages') + ' only.', 'Delete'))) return;
+    changeMessages(all => all.forEach(x => {
+      if (x.id === m.id) { x.deletedBy = x.deletedBy || []; if (!x.deletedBy.includes(MSG_ME)) x.deletedBy.push(MSG_ME); }
+    }), 'Could not delete the message');
+  }
+
+  function openMessages(tab) {
+    msgTab = tab || 'inbox';
+    msgStatus.textContent = '';
+    renderMessages();
+    messagesOverlay.classList.add('open');
+    if (msgTab === 'new') msgText.focus();
+    loadMessages(true);
+  }
+  function closeMessages() {
+    messagesOverlay.classList.remove('open');
+  }
+  // write a new message, optionally to someone and about a task
+  function startMessage(to, about) {
+    if (to && [...msgTo.options].some(o => o.value === to)) msgTo.value = to;
+    msgAboutTask = about ? { id: about.id, text: about.text } : null;
+    openMessages('new');
+  }
+  window.startTaskMessage = item => startMessage(null, { id: item.id, text: item.text });
+
+  async function sendMessage() {
+    const text = msgText.value.trim();
+    if (!text) { msgText.focus(); return; }
+    if (!canMessage()) return;
+    const to = msgTo.value;
+    const msg = { id: uid(), from: MSG_ME, to, text, sentAt: Date.now() };
+    if (msgAboutTask) msg.about = { id: msgAboutTask.id, text: msgAboutTask.text };
+    msgSend.disabled = true;
+    msgStatus.textContent = 'Sending…';
+    const ok = await changeMessages(all => { if (!all.some(m => m.id === msg.id)) all.push(msg); }, 'Could not send the message');
+    msgSend.disabled = false;
+    msgStatus.textContent = '';
+    if (!ok) return;
+    msgText.value = '';
+    msgAboutTask = null;
+    showToast('Message sent to ' + msgName(to) + '.');
+    msgTab = 'sent';
+    renderMessages();
+  }
+
+  messagesBtn.addEventListener('click', () => openMessages(unreadMessages().length || msgTab === 'new' ? 'inbox' : msgTab));
+  document.getElementById('closeMessagesBtn').addEventListener('click', closeMessages);
+  messagesOverlay.addEventListener('click', e => { if (e.target === messagesOverlay) closeMessages(); });
+  document.querySelectorAll('#messagesOverlay .msg-tab').forEach(b => b.addEventListener('click', () => {
+    msgTab = b.dataset.tab;
+    renderMessages();
+    if (msgTab === 'new') msgText.focus();
+  }));
+  msgSend.addEventListener('click', sendMessage);
+  msgText.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendMessage(); }
+  });
+
+  updateMessagesBadge();
+  setTimeout(() => loadMessages(true), 2500);
+  setInterval(() => loadMessages(true), 60000);
+  window.addEventListener('focus', () => loadMessages(false));
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadMessages(false); });
+
   const overlayClosers = [
+    ['messagesOverlay', 'closeMessagesBtn'],
     ['notepadOverlay', 'closeNotepadBtn'],
     ['newTaskOverlay', 'newTaskWindowClose'],
     ['settingsOverlay', 'closeSettingsBtn'],
