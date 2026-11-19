@@ -3721,6 +3721,22 @@
   const notepadListBtn = notepadBar.querySelector('.fmt-list');
   notepadListBtn.title = 'Bullet points (one per line)';
   notepadListBtn.setAttribute('aria-label', notepadListBtn.title);
+  // Select all: switches to typing (if reading) and highlights everything, ready to copy, format or replace
+  const notepadSelectAll = document.createElement('button');
+  notepadSelectAll.type = 'button';
+  notepadSelectAll.className = 'format-btn fmt-select-all';
+  notepadSelectAll.textContent = 'Select all';
+  notepadSelectAll.title = 'Select all the text in the Notepad';
+  // keep the typing box focused (pressing a button would otherwise end typing)
+  notepadSelectAll.addEventListener('pointerdown', e => e.preventDefault());
+  notepadSelectAll.addEventListener('mousedown', e => e.preventDefault());
+  notepadSelectAll.addEventListener('click', () => {
+    if (!notepadEditing) startNotepadEdit();
+    notepadInput.focus();
+    notepadInput.select();
+    notepadInput.scrollTop = 0;
+  });
+  notepadBar.appendChild(notepadSelectAll);
   // Email the Notepad (same choices as a task's Email button; for users in config.js emailTaskUsers)
   if (emailTaskOn) {
     const notepadEmail = buildEmailMenu(null, () => {
