@@ -3393,3 +3393,9 @@ body.layout-sage .notepad-link { position:static; order:5; align-self:flex-end; 
   .modal.messages-modal { height:86dvh; }
   .msg-tab-new { margin-left:0; }
 }
+
+/* v12.74: the Woke up / Asleep markers were cut off in the narrow Category column. The column now stacks its
+   tags, and a marker that is still too wide breaks onto a second line instead of losing its right-hand side. */
+li.item .cell.cell-category { white-space:normal; overflow:visible; text-overflow:clip; display:flex; flex-wrap:wrap; align-items:center; gap:4px; }
+li.item .cell-category .category-tag.woke-tag, li.item .cell-category .category-tag.sleep-tag { margin-left:0; white-space:normal; overflow:visible; text-overflow:clip; max-width:100%; line-height:1.25; overflow-wrap:anywhere; }
+.category-tag .tag-piece { white-space:nowrap; }

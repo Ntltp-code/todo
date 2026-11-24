@@ -1259,6 +1259,15 @@
           taskText.appendChild(progress);
         }
 
+        const tagPieces = (tag, pieces) => {
+          pieces.filter(Boolean).forEach((p, i) => {
+            if (i) tag.appendChild(document.createTextNode(' '));
+            const s = document.createElement('span');
+            s.className = 'tag-piece';
+            s.textContent = p;
+            tag.appendChild(s);
+          });
+        };
         const categoryCell = document.createElement('div');
         categoryCell.className = 'cell cell-category';
         if (item.category) {
@@ -1270,13 +1279,14 @@
         if (!item.done && item.pending && (page === 'active' || page === 'today')) {
           const sleepTag = document.createElement('span');
           sleepTag.className = 'category-tag sleep-tag';
-          sleepTag.textContent = item.snoozeUntil ? ('\u263E Asleep till ' + toUKDateShort(item.snoozeUntil)) : '\u23F8 Pending';
+          tagPieces(sleepTag, item.snoozeUntil ? ['\u263E Asleep till', toUKDateShort(item.snoozeUntil)] : ['\u23F8 Pending']);
           categoryCell.appendChild(sleepTag);
         }
         if (!item.done && !item.pending && item.wokeUp && (page === 'active' || page === 'today')) {
           const wokeTag = document.createElement('span');
           wokeTag.className = 'category-tag woke-tag';
-          wokeTag.textContent = '⏰ Woke up' + (item.wokeAt ? ' ' + toUKDateShort(item.wokeAt) : '');
+          // words kept in pieces that don't break, so a narrow column wraps it as "Woke up / 24 Nov"
+          tagPieces(wokeTag, ['⏰ Woke up', item.wokeAt ? toUKDateShort(item.wokeAt) : '']);
           wokeTag.title = 'This task has woken up from sleep. Click to dismiss this marker.';
           wokeTag.addEventListener('click', e => {
             e.stopPropagation();
